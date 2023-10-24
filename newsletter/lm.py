@@ -1,15 +1,15 @@
 import openai
 
 
-def summarize_post(post, model="gpt-3.5-turbo-16k"):
+def summarize_post(title, content, model="gpt-3.5-turbo-16k"):
     result = openai.ChatCompletion.create(
         model=model,
         messages=[
             {
                 "role": "system",
-                "content": f"""{post['title']}
+                "content": f"""{title}
 
-{post['content']}
+{content}
 ---
 
 Generate a summary for the above article. Prioritize:
