@@ -12,16 +12,12 @@ def summarize_post(post, model="gpt-3.5-turbo-16k"):
 {post['content']}
 ---
 
-Generate at most 3 bullet points summarizing the article. Do not mention the title of the article, or include filler words. The title will be included along with these bullet points.
-
-Strictly adhere to the following rules:
-- Do not generate more than 3 bullet points
-- Each individual bullet point should be at most 5 words
-- Each individual bullet point does not need to be a grammatically correct sentence.
-- Prioritize bullet points that can be very quickly skimmed.
-- Reduce mental strain while skimming the bullet points.
-
-Here are the bullet points:
+Generate a summary for the above article. Prioritize:
+1. Reducing the mental burden of reading the summary.
+2. Conciseness over grammatical correctness.
+3. Ability for general audience to understand.
+4. Write the summary as if a 5 year old was the reader.
+Here is the summary:
 """,
             }
         ],

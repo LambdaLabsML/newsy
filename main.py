@@ -30,7 +30,7 @@ def main():
         processed = set(json.load(fp))
 
     posts = itertools.chain(
-        hn.iter_top_posts(num_posts=5),
+        hn.iter_top_posts(num_posts=25),
         reddit.iter_top_posts("MachineLearning", num_posts=5),
     )
 
@@ -39,15 +39,16 @@ def main():
             continue
 
         processed.add(post["comments_url"])
+        with open(args.db, "w") as fp:
+            json.dump(list(processed), fp)
 
         try:
             summary = lm.summarize_post(post)
             should_show = lm.matches_filter(summary, args.filter)
 
             lines = [
-                f"<{post['content_url']}|{post['title']}> | <{post['comments_url']}|Comments>\n",
-                "> " + summary,
-                f"Top Comments:",
+                f"<{post['content_url']}|{post['title']}>",
+                f"{post['source']} <{post['comments_url']}|Comments>:",
             ]
             for i, c in enumerate(post["comments"]):
                 comment_summary = lm.summarize_comment(
@@ -59,12 +60,11 @@ def main():
             print(msg)
 
             if not args.dry_run and should_show:
-                slack.post(msg)
+                r = slack.post(msg)
+                if r.data["ok"]:
+                    slack.post(summary, thread_ts=r.data["ts"])
         except Exception as err:
             print(err)
-
-    with open(args.db, "w") as fp:
-        json.dump(list(processed), fp)
 
 
 if __name__ == "__main__":

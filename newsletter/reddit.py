@@ -36,6 +36,7 @@ def iter_top_posts(subreddit, num_posts=25, num_comments=3):
             )
 
         yield {
+            "source": f"/r/{subreddit}",
             "title": item.title,
             "score": item.score,
             "content_url": item.url,

@@ -22,10 +22,11 @@ class SlackChannel:
                     self.conversation_id = channel["id"]
                     break
 
-    def post(self, msg):
+    def post(self, msg, thread_ts=None):
         return self.client.chat_postMessage(
             channel=self.conversation_id,
             text=msg,
+            thread_ts=thread_ts,
             unfurl_links=False,
             unfurl_media=False,
         )
