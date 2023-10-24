@@ -54,7 +54,12 @@ def main():
                 comment_summary = lm.summarize_comment(
                     post["title"], summary, c["content"]
                 )
-                lines.append(f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>")
+                if "score" in c:
+                    lines.append(
+                        f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+                    )
+                else:
+                    lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
 
             msg = "\n".join(lines)
             print(msg)
