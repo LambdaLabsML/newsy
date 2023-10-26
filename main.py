@@ -18,7 +18,7 @@ def main():
     parser.add_argument(
         "-p",
         "--paper-filter",
-        default="Papers related to prompt engineering for large language models.",
+        default="Papers related to prompting language models, or prompt engineering for large language models.",
     )
     parser.add_argument("-c", "--channel", default="hackernews")
     parser.add_argument("--db", default=".db")
@@ -36,7 +36,7 @@ def main():
 
     posts = itertools.chain(
         parse_hn.iter_top_posts(num_posts=25),
-        parse_reddit.iter_top_posts("MachineLearning", num_posts=5),
+        parse_reddit.iter_top_posts("MachineLearning", num_posts=2),
     )
 
     for post in posts:
@@ -76,32 +76,33 @@ def main():
         except Exception as err:
             print(err)
 
-    # for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
-    #     if not args.dry_run and paper["url"] in processed:
-    #         continue
+    for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
+        if not args.dry_run and paper["url"] in processed:
+            continue
 
-    #     processed.add(paper["url"])
-    #     with open(args.db, "w") as fp:
-    #         json.dump(list(processed), fp)
+        processed.add(paper["url"])
+        with open(args.db, "w") as fp:
+            json.dump(list(processed), fp)
 
-    #     try:
-    #         summary = lm.summarize_post(paper["title"], paper["abstract"])
-    #         should_show = lm.matches_filter(summary, args.paper_filter)
+        try:
+            summary = lm.summarize_post(paper["title"], paper["abstract"])
+            should_show = lm.matches_filter(summary, args.paper_filter)
 
-    #         lines = [
-    #             f"<{paper['url']}|{paper['title']}>",
-    #             ", ".join(paper["authors"]),
-    #         ]
-    #         msg = "\n".join(lines)
-    #         print(msg)
+            lines = [f"<{paper['url']}|{paper['title']}>"]
+            msg = "\n".join(lines)
+            print(msg)
 
-    #         if not args.dry_run and should_show:
-    #             r = slack.post(msg)
-    #             if r.data["ok"]:
-    #                 slack.post(summary, thread_ts=r.data["ts"])
-    #                 slack.post(paper["abstract"], thread_ts=r.data["ts"])
-    #     except Exception as err:
-    #         print(err)
+            if not args.dry_run and should_show:
+                r = slack.post(msg)
+                if r.data["ok"]:
+                    slack.post(
+                        "Authors: " + ", ".join(paper["authors"]),
+                        thread_ts=r.data["ts"],
+                    )
+                    slack.post(summary, thread_ts=r.data["ts"])
+                    slack.post(paper["abstract"], thread_ts=r.data["ts"])
+        except Exception as err:
+            print(err)
 
 
 if __name__ == "__main__":

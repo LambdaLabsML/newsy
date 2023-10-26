@@ -30,3 +30,12 @@ class SlackChannel:
             unfurl_links=False,
             unfurl_media=False,
         )
+
+    def edit(self, src, new_content):
+        return self.client.chat_update(
+            channel=self.conversation_id,
+            ts=src["ts"],
+            text=new_content,
+            unfurl_links=False,
+            unfurl_media=False,
+        )
