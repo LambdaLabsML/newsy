@@ -23,7 +23,7 @@ def iter_top_posts(num_posts=25, num_comments=3):
         comments = []
         for comment_id in item["kids"][:num_comments]:
             c = get_json_from_url(f"{_BASE_URL}/item/{comment_id}.json")
-            if "text" not in c:
+            if c is None or "text" not in c:
                 # deleted comment
                 continue
             comments.append(
