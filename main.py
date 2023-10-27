@@ -34,47 +34,47 @@ def main():
     with open(args.db) as fp:
         processed = set(json.load(fp))
 
-    # posts = itertools.chain(
-    #     parse_hn.iter_top_posts(num_posts=25),
-    #     parse_reddit.iter_top_posts("MachineLearning", num_posts=2),
-    # )
+    posts = itertools.chain(
+        parse_hn.iter_top_posts(num_posts=25),
+        parse_reddit.iter_top_posts("MachineLearning", num_posts=2),
+    )
 
-    # for post in posts:
-    #     if not args.dry_run and post["comments_url"] in processed:
-    #         continue
+    for post in posts:
+        if not args.dry_run and post["comments_url"] in processed:
+            continue
 
-    #     processed.add(post["comments_url"])
-    #     with open(args.db, "w") as fp:
-    #         json.dump(list(processed), fp)
+        processed.add(post["comments_url"])
+        with open(args.db, "w") as fp:
+            json.dump(list(processed), fp)
 
-    #     try:
-    #         summary = lm.summarize_post(post["title"], post["content"])
-    #         should_show = lm.matches_filter(summary, args.filter)
+        try:
+            summary = lm.summarize_post(post["title"], post["content"])
+            should_show = lm.matches_filter(summary, args.filter)
 
-    #         lines = [
-    #             f"<{post['content_url']}|{post['title']}>",
-    #             f"{post['source']} <{post['comments_url']}|Comments>:",
-    #         ]
-    #         for i, c in enumerate(post["comments"]):
-    #             comment_summary = lm.summarize_comment(
-    #                 post["title"], summary, c["content"]
-    #             )
-    #             if "score" in c:
-    #                 lines.append(
-    #                     f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
-    #                 )
-    #             else:
-    #                 lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
+            lines = [
+                f"<{post['content_url']}|{post['title']}>",
+                f"{post['source']} <{post['comments_url']}|Comments>:",
+            ]
+            for i, c in enumerate(post["comments"]):
+                comment_summary = lm.summarize_comment(
+                    post["title"], summary, c["content"]
+                )
+                if "score" in c:
+                    lines.append(
+                        f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+                    )
+                else:
+                    lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
 
-    #         msg = "\n".join(lines)
-    #         print(msg)
+            msg = "\n".join(lines)
+            print(msg)
 
-    #         if not args.dry_run and should_show:
-    #             r = slack.post(msg)
-    #             if r.data["ok"]:
-    #                 slack.post(summary, thread_ts=r.data["ts"])
-    #     except Exception as err:
-    #         print(err)
+            if not args.dry_run and should_show:
+                r = slack.post(msg)
+                if r.data["ok"]:
+                    slack.post(summary, thread_ts=r.data["ts"])
+        except Exception as err:
+            print(err)
 
     paper_msg = None
     lines = [
