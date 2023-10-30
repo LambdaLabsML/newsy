@@ -90,8 +90,26 @@ def _do_summarize(url, printl: Callable[[str], None]):
         printl(f"For reference, here is the *Abstract*:\n{item['abstract']}")
     else:
         # generic web page
-        printl(f"Here's the summary for {url}:")
-        printl(lm.summarize_post("", util.get_text_from_url(url)))
+        item = util.get_details_from_url(url)
+        summary = lm.summarize_post(item["title"], item["text"])
+        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
+
+        hn_discussion = parse_hn.search_for_url(url)
+        if hn_discussion is not None:
+            lines = [
+                f"I also found a +{hn_discussion['score']} discussion on <{hn_discussion['comments_url']}|{hn_discussion['source']}>. It's centered around:"
+            ]
+            for i, c in enumerate(hn_discussion["comments"]):
+                comment_summary = lm.summarize_comment(
+                    hn_discussion["title"], summary, c["content"]
+                )
+                if "score" in c:
+                    lines.append(
+                        f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+                    )
+                else:
+                    lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
+            printl("\n".join(lines))
 
 
 def _do_newsletter(channel):
