@@ -86,13 +86,13 @@ def _do_summarize(url, printl: Callable[[str], None]):
         # arxiv abstract
         item = parse_arxiv.get_item(url)
         summary = lm.summarize_post(item["title"], item["abstract"])
-        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
+        printl(f"Here's the summary for <{url}|{item['title']}>:\n> {summary}")
         printl(f"For reference, here is the *Abstract*:\n{item['abstract']}")
     else:
         # generic web page
         item = util.get_details_from_url(url)
         summary = lm.summarize_post(item["title"], item["text"])
-        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
+        printl(f"Here's the summary for <{url}|{item['title']}>:\n> {summary}")
 
         hn_discussion = parse_hn.search_for_url(url)
         if hn_discussion is not None:
@@ -211,6 +211,11 @@ def _do_newsletter(channel):
         add_line("_No more relevant papers from today._")
 
     add_line("Enjoy reading 🎉")
+
+
+@app.event("message")
+def handle_message_events(body, logger):
+    logger.info(body)
 
 
 if __name__ == "__main__":
