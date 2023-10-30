@@ -53,7 +53,21 @@ def handle_app_mention(event, say):
 def _print_summary(url, printl: Callable[[str], None]):
     if "reddit.com" in url and "comments" in url:
         # reddit post comments
-        ...
+        item = parse_reddit.get_item(url)
+
+        summary = lm.summarize_post(item["title"], item["content"])
+
+        lines = [
+            f"The discussion on <{item['content_url']}|{item['title']}> at <{item['comments_url']}|{item['source']}> is centered around:"
+        ]
+        for i, c in enumerate(item["comments"]):
+            comment_summary = lm.summarize_comment(item["title"], summary, c["content"])
+            if "score" in c:
+                lines.append(f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>")
+            else:
+                lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
+        printl("\n".join(lines))
+        printl(f"And here's the summary for you:\n> {summary}")
     elif "news.ycombinator.com/item" in url:
         # hacker news comment section
         item = parse_hn.get_item(url)
