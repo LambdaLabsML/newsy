@@ -79,7 +79,7 @@ def command_newsletter(ack, respond, command):
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No relevant posts from today._")
+        add_line("_No more relevant posts from today._")
 
     add_line("\n*/r/MachineLearning:*")
     num = 0
@@ -103,7 +103,7 @@ def command_newsletter(ack, respond, command):
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No relevant posts from today._")
+        add_line("_No more relevant posts from today._")
 
     add_line("\n*arxiv AI papers:*")
     num = 0
@@ -125,11 +125,12 @@ def command_newsletter(ack, respond, command):
             msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
             print(msg)
             if should_show:
+                num += 1
                 add_line(msg)
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No relevant papers from today._")
+        add_line("_No more relevant papers from today._")
 
 
 if __name__ == "__main__":
