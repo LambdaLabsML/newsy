@@ -7,7 +7,7 @@ def search_for_url(url: str, num_comments=3):
     response = get_json_from_url(
         f"http://hn.algolia.com/api/v1/search?query={url}&restrictSearchableAttributes=url"
     )
-    hits = sorted(response["hits"], key=lambda h: h["points"])
+    hits = sorted(response["hits"], key=lambda h: h["points"], reverse=True)
     if len(hits) == 0:
         return None
     item_id = hits[0]["story_id"]
