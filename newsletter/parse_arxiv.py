@@ -2,6 +2,24 @@ import arxiv
 from datetime import datetime, timedelta
 
 
+def get_item(url: str):
+    assert "arxiv.org" in url
+
+    client = arxiv.Client()
+    search = arxiv.Search(id_list=[url.split("/")[-1].replace(".pdf", "")])
+    item = next(client.results(search))
+
+    return {
+        "source": "arxiv",
+        "title": item.title,
+        "url": item.entry_id,
+        "authors": [str(a) for a in item.authors],
+        "abstract": item.summary,
+        "category": item.primary_category,
+        "pdf_url": item.pdf_url,
+    }
+
+
 def iter_todays_papers(category: str):
     client = arxiv.Client()
     search = arxiv.Search(

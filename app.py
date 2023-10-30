@@ -1,4 +1,5 @@
 import itertools
+from typing import Callable
 import json
 import os
 import ssl
@@ -7,7 +8,7 @@ from slack_sdk.web import WebClient
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from newsletter import lm, parse_arxiv, parse_hn, parse_reddit
+from newsletter import lm, parse_arxiv, parse_hn, parse_reddit, util
 
 app = App(
     client=WebClient(
@@ -27,6 +28,59 @@ PAPER_FILTER = """Papers related to:
 """
 
 DB_FILENAME = ".db"
+
+
+@app.event("app_mention")
+def handle_app_mention(event, say):
+    def printl(msg):
+        app.client.chat_postMessage(
+            text=msg,
+            channel=event["channel"],
+            thread_ts=event["ts"],
+            unfurl_links=False,
+            unfurl_media=False,
+        )
+
+    print(event)
+    parts = event["text"].split(" ")
+    assert parts[0].startswith("<@")  # the mention
+
+    if parts[1] == "summarize":
+        url = parts[2][1:-1]  # strip off the < and >
+        _print_summary(url, printl)
+
+
+def _print_summary(url, printl: Callable[[str], None]):
+    if "reddit.com" in url and "comments" in url:
+        # reddit post comments
+        ...
+    elif "news.ycombinator.com/item" in url:
+        # hacker news comment section
+        item = parse_hn.get_item(url)
+
+        summary = lm.summarize_post(item["title"], item["content"])
+
+        lines = [
+            f"The discussion on <{item['content_url']}|{item['title']}> at <{item['comments_url']}|{item['source']}> is centered around:"
+        ]
+        for i, c in enumerate(item["comments"]):
+            comment_summary = lm.summarize_comment(item["title"], summary, c["content"])
+            if "score" in c:
+                lines.append(f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>")
+            else:
+                lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
+        printl("\n".join(lines))
+        printl(f"And here's the summary for you:\n> {summary}")
+    elif "arxiv.org" in url:
+        # arxiv abstract
+        item = parse_arxiv.get_item(url)
+        summary = lm.summarize_post(item["title"], item["abstract"])
+        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
+        printl(f"For reference, here is the *Abstract*:\n{item['abstract']}")
+    else:
+        # generic web page
+        printl(f"Here's the summary for {url}:")
+        printl(lm.summarize_post("", util.get_text_from_url(url)))
 
 
 @app.command("/newsletter")
