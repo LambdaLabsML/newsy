@@ -10,9 +10,15 @@ def iter_todays_papers(category: str):
 
     today = datetime.utcnow().date()
 
+    if today.weekday() == 0:
+        # its a monday! grab papers from the last friday
+        delta = timedelta(days=4)
+    else:
+        delta = timedelta(days=2)
+
     for item in client.results(search):
         # only include papers from the last day
-        if (today - item.published.date()) >= timedelta(days=2):
+        if (today - item.published.date()) >= delta:
             break
 
         yield {
