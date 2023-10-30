@@ -132,6 +132,8 @@ def command_newsletter(ack, respond, command):
     if num == 0:
         add_line("_No more relevant papers from today._")
 
+    add_line("Enjoy 🎉")
+
 
 if __name__ == "__main__":
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
