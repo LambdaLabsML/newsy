@@ -41,36 +41,33 @@ def handle_app_mention(event, say):
             unfurl_media=False,
         )
 
-    print(event)
     parts = event["text"].split(" ")
     assert parts[0].startswith("<@")  # the mention
 
-    if parts[1] == "summarize":
+    if parts[1] == "newsletter":
+        _do_newsletter(channel=event["channel"])
+    elif parts[1] == "summarize":
+        assert len(parts) == 3
         url = parts[2][1:-1]  # strip off the < and >
-        _print_summary(url, printl)
+        _do_summarize(url, printl)
+    else:
+        say(
+            f"""Unrecognized command `{parts[1]}`. Valid commands are:
+1. `@<bot name> newsletter`
+2. `@<bot name> summarize <url>`
+"""
+        )
 
 
-def _print_summary(url, printl: Callable[[str], None]):
-    if "reddit.com" in url and "comments" in url:
-        # reddit post comments
-        item = parse_reddit.get_item(url)
-
-        summary = lm.summarize_post(item["title"], item["content"])
-
-        lines = [
-            f"The discussion on <{item['content_url']}|{item['title']}> at <{item['comments_url']}|{item['source']}> is centered around:"
-        ]
-        for i, c in enumerate(item["comments"]):
-            comment_summary = lm.summarize_comment(item["title"], summary, c["content"])
-            if "score" in c:
-                lines.append(f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>")
-            else:
-                lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
-        printl("\n".join(lines))
-        printl(f"And here's the summary for you:\n> {summary}")
-    elif "news.ycombinator.com/item" in url:
-        # hacker news comment section
-        item = parse_hn.get_item(url)
+def _do_summarize(url, printl: Callable[[str], None]):
+    is_reddit_comments = "reddit.com" in url and "comments" in url
+    is_hn_comments = "news.ycombinator.com/item" in url
+    if is_reddit_comments or is_hn_comments:
+        # reddit post comments or hackernews comments
+        if "reddit.com" in url:
+            item = parse_reddit.get_item(url)
+        else:
+            item = parse_hn.get_item(url)
 
         summary = lm.summarize_post(item["title"], item["content"])
 
@@ -97,10 +94,7 @@ def _print_summary(url, printl: Callable[[str], None]):
         printl(lm.summarize_post("", util.get_text_from_url(url)))
 
 
-@app.command("/newsletter")
-def command_newsletter(ack, respond, command):
-    ack()
-
+def _do_newsletter(channel):
     if not os.path.exists(DB_FILENAME):
         with open(DB_FILENAME, "w") as fp:
             fp.write("[]")
@@ -110,20 +104,18 @@ def command_newsletter(ack, respond, command):
 
     lines = ["Here's the latest news from today for you!"]
 
+    news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
+    thread = news.data["ts"]
+
     def add_line(new_line):
         lines.append(new_line)
         app.client.chat_update(
             text="\n".join(lines),
-            channel=command["channel_id"],
+            channel=channel,
             unfurl_links=False,
             unfurl_media=False,
             ts=thread,
         )
-
-    news = app.client.chat_postMessage(
-        text="\n".join(lines), channel=command["channel_id"]
-    )
-    thread = news.data["ts"]
 
     add_line("\n*HackerNews:*")
     num = 0
@@ -200,7 +192,7 @@ def command_newsletter(ack, respond, command):
     if num == 0:
         add_line("_No more relevant papers from today._")
 
-    add_line("Enjoy 🎉")
+    add_line("Enjoy reading 🎉")
 
 
 if __name__ == "__main__":
