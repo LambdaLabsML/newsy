@@ -8,7 +8,7 @@ from slack_sdk.web import WebClient
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from newsletter import lm, parse_arxiv, parse_hn, parse_reddit, util
+from newsletter import lm, parse_arxiv, parse_hn, parse_reddit, parse_rss, util
 
 app = App(
     client=WebClient(
@@ -209,6 +209,24 @@ def _do_newsletter(channel):
             print(err)
     if num == 0:
         add_line("_No more relevant papers from today._")
+
+    for name, rss_feed in [
+        ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
+        ("StabilityAI Blog", "https://stability.ai/blog?format=rss"),
+        ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
+    ]:
+        add_line(f"\n*{name}:*")
+        num = 0
+        for item in parse_rss.iter_items_from_today(rss_feed):
+            try:
+                msg = f"{num + 1}. <{item['url']}|{item['title']}>"
+                print(msg)
+                num += 1
+                add_line(msg)
+            except Exception as err:
+                print(err)
+        if num == 0:
+            add_line("_No posts from today._")
 
     add_line("Enjoy reading 🎉")
 
