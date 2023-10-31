@@ -20,17 +20,18 @@ def search_for_url(url: str, num_comments=3):
         content = item["text"]
 
     comments = []
-    for comment_id in item["kids"][:num_comments]:
-        c = get_json_from_url(f"{_BASE_URL}/item/{comment_id}.json")
-        if c is None or "text" not in c:
-            # deleted comment
-            continue
-        comments.append(
-            {
-                "content": c["text"],
-                "url": f"https://news.ycombinator.com/item?id={comment_id}",
-            }
-        )
+    if "kids" in item:
+        for comment_id in item["kids"][:num_comments]:
+            c = get_json_from_url(f"{_BASE_URL}/item/{comment_id}.json")
+            if c is None or "text" not in c:
+                # deleted comment
+                continue
+            comments.append(
+                {
+                    "content": c["text"],
+                    "url": f"https://news.ycombinator.com/item?id={comment_id}",
+                }
+            )
     return {
         "source": "HackerNews",
         "title": item["title"],
