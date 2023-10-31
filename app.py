@@ -32,7 +32,7 @@ DB_FILENAME = ".db"
 
 HELP = """Valid commands are:
 1. `news`
-2. `summarize <url>`
+2. `summarize <url>`. You can give me any url! I know how to handle reddit or hackernews comment threads, arxiv pages, and general webpages.
 """
 
 
