@@ -53,7 +53,7 @@ def get_item(url: str, num_comments=3):
     item = get_json_from_url(f"{_BASE_URL}/item/{item_id}.json")
 
     comments_url = f"https://news.ycombinator.com/item?id={item_id}"
-    if "url" in item:
+    if "text" not in item or len(item["text"]) == 0:
         content = get_text_from_url(item["url"])
     else:
         content = item["text"]

@@ -4,6 +4,7 @@ import json
 import os
 import ssl
 import certifi
+import requests
 from slack_sdk.web import WebClient
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
@@ -17,7 +18,7 @@ app = App(
     ),
 )
 
-ARTICLE_FILTER = """Articles related to Artificial intelligence (AI), Machine Learning (ML), foundation models, language models, GPT, generation models.
+ARTICLE_FILTER = """Articles related to Artificial intelligence (AI), Machine Learning (ML), foundation models, LLMs (large language models), GPT, generation models.
 """
 
 PAPER_FILTER = """Papers related to:
@@ -29,7 +30,13 @@ PAPER_FILTER = """Papers related to:
 
 DB_FILENAME = ".db"
 
+HELP = """Valid commands are:
+1. `news`
+2. `summarize <url>`
+"""
 
+
+@app.event("message")
 @app.event("app_mention")
 def handle_app_mention(event, say):
     def printl(msg):
@@ -42,21 +49,30 @@ def handle_app_mention(event, say):
         )
 
     parts = event["text"].split(" ")
-    assert parts[0].startswith("<@")  # the mention
-
-    if parts[1] == "newsletter":
-        _do_newsletter(channel=event["channel"])
-    elif parts[1] == "summarize":
-        assert len(parts) == 3
-        url = parts[2][1:-1]  # strip off the < and >
-        _do_summarize(url, printl)
+    if event["type"] == "message":
+        if event["channel_type"] != "im":
+            return
     else:
-        say(
-            f"""Unrecognized command `{parts[1]}`. Valid commands are:
-1. `@<bot name> newsletter`
-2. `@<bot name> summarize <url>`
-"""
-        )
+        assert event["type"] == "app_mention"
+        assert parts[0].startswith("<@")  # the mention
+        parts = parts[1:]
+
+    if parts[0] == "news":
+        _do_news(channel=event["channel"])
+    elif parts[0] == "summarize":
+        if len(parts) != 2:
+            say("Missing a link to summarize. " + HELP)
+            return
+        url = parts[1][1:-1]  # strip off the < and >
+        try:
+            _do_summarize(url, printl)
+        except requests.exceptions.HTTPError as err:
+            say(
+                f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
+            )
+    else:
+        say(f"Unrecognized command `{parts[0]}`. " + HELP)
+        return
 
 
 def _do_summarize(url, printl: Callable[[str], None]):
@@ -112,7 +128,7 @@ def _do_summarize(url, printl: Callable[[str], None]):
             printl("\n".join(lines))
 
 
-def _do_newsletter(channel):
+def _do_news(channel):
     if not os.path.exists(DB_FILENAME):
         with open(DB_FILENAME, "w") as fp:
             fp.write("[]")
@@ -173,7 +189,7 @@ def _do_newsletter(channel):
             summary = lm.summarize_post(post["title"], post["content"])
             should_show = lm.matches_filter(summary, ARTICLE_FILTER)
 
-            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
+            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
             print(msg)
             if should_show:
                 num += 1
@@ -228,12 +244,7 @@ def _do_newsletter(channel):
         if num == 0:
             add_line("_No posts from today._")
 
-    add_line("Enjoy reading 🎉")
-
-
-@app.event("message")
-def handle_message_events(body, logger):
-    logger.info(body)
+    add_line("\nEnjoy reading 🎉")
 
 
 if __name__ == "__main__":
