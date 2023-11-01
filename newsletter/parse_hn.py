@@ -85,31 +85,32 @@ def iter_top_posts(num_posts=25, num_comments=3):
     top_ids = get_json_from_url(f"{_BASE_URL}/topstories.json")
     for item_id in top_ids[:num_posts]:
         item = get_json_from_url(f"{_BASE_URL}/item/{item_id}.json")
-        if item["type"] != "story" or "kids" not in item:
+        if item["type"] != "story":
             continue
 
         comments_url = f"https://news.ycombinator.com/item?id={item_id}"
-        try:
-            if "url" in item:
+        if "url" in item:
+            try:
                 content = get_text_from_url(item["url"])
-            else:
-                content = item["text"]
-        except Exception as err:
-            print(err)
-            continue
+            except Exception as err:
+                print(err)
+                continue
+        else:
+            content = item["text"]
 
         comments = []
-        for comment_id in item["kids"][:num_comments]:
-            c = get_json_from_url(f"{_BASE_URL}/item/{comment_id}.json")
-            if c is None or "text" not in c:
-                # deleted comment
-                continue
-            comments.append(
-                {
-                    "content": c["text"],
-                    "url": f"https://news.ycombinator.com/item?id={comment_id}",
-                }
-            )
+        if "kids" in item:
+            for comment_id in item["kids"][:num_comments]:
+                c = get_json_from_url(f"{_BASE_URL}/item/{comment_id}.json")
+                if c is None or "text" not in c:
+                    # deleted comment
+                    continue
+                comments.append(
+                    {
+                        "content": c["text"],
+                        "url": f"https://news.ycombinator.com/item?id={comment_id}",
+                    }
+                )
         yield {
             "source": "HackerNews",
             "title": item["title"],

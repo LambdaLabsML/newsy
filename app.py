@@ -1,11 +1,10 @@
-import itertools
 from typing import Callable
-import json
 import os
 import ssl
 import certifi
 import requests
 from slack_sdk.web import WebClient
+from slack_sdk.errors import SlackApiError
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
@@ -134,17 +133,38 @@ def _do_news(channel):
 
     def add_line(new_line):
         lines.append(new_line)
-        app.client.chat_update(
-            text="\n".join(lines),
-            channel=channel,
-            unfurl_links=False,
-            unfurl_media=False,
-            ts=thread,
-        )
+        for _ in range(3):
+            try:
+                app.client.chat_update(
+                    text="\n".join(lines),
+                    channel=channel,
+                    unfurl_links=False,
+                    unfurl_media=False,
+                    ts=thread,
+                )
+                return
+            except SlackApiError:
+                ...
+
+    def set_progress_msg(msg):
+        for _ in range(3):
+            try:
+                app.client.chat_update(
+                    text="\n".join(lines) + "\n\n_" + msg + "_\n",
+                    channel=channel,
+                    unfurl_links=False,
+                    unfurl_media=False,
+                    ts=thread,
+                )
+                return
+            except SlackApiError:
+                ...
 
     add_line("\n*HackerNews:*")
+    set_progress_msg("Retrieving posts")
     num = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
+        set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         try:
             summary = lm.summarize_post(post["title"], post["content"])
             should_show = lm.matches_filter(summary, ARTICLE_FILTER)
@@ -160,8 +180,10 @@ def _do_news(channel):
         add_line("_No more relevant posts from today._")
 
     add_line("\n*/r/MachineLearning:*")
+    set_progress_msg("Retrieving posts")
     num = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
+        set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         try:
             summary = lm.summarize_post(post["title"], post["content"])
             should_show = lm.matches_filter(summary, ARTICLE_FILTER)
@@ -176,9 +198,30 @@ def _do_news(channel):
     if num == 0:
         add_line("_No more relevant posts from today._")
 
+    for name, rss_feed in [
+        ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
+        ("StabilityAI Blog", "https://stability.ai/blog?format=rss"),
+        ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
+    ]:
+        add_line(f"\n*{name}:*")
+        set_progress_msg("Retrieving rss feed items")
+        num = 0
+        for item in parse_rss.iter_items_from_today(rss_feed):
+            try:
+                msg = f"{num + 1}. <{item['url']}|{item['title']}>"
+                print(msg)
+                num += 1
+                add_line(msg)
+            except Exception as err:
+                print(err)
+        if num == 0:
+            add_line("_No posts from today._")
+
     add_line("\n*arxiv AI papers:*")
+    set_progress_msg("Retrieving papers")
     num = 0
     for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
+        set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         try:
             summary = lm.summarize_post(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
@@ -196,25 +239,7 @@ def _do_news(channel):
     if num == 0:
         add_line("_No more relevant papers from today._")
 
-    for name, rss_feed in [
-        ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
-        ("StabilityAI Blog", "https://stability.ai/blog?format=rss"),
-        ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
-    ]:
-        add_line(f"\n*{name}:*")
-        num = 0
-        for item in parse_rss.iter_items_from_today(rss_feed):
-            try:
-                msg = f"{num + 1}. <{item['url']}|{item['title']}>"
-                print(msg)
-                num += 1
-                add_line(msg)
-            except Exception as err:
-                print(err)
-        if num == 0:
-            add_line("_No posts from today._")
-
-    add_line("\nEnjoy reading 🎉")
+    add_line("\n\nEnjoy reading 🎉")
 
 
 if __name__ == "__main__":

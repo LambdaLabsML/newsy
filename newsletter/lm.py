@@ -3,6 +3,7 @@ import openai
 
 def summarize_post(title, content, model="gpt-3.5-turbo-16k"):
     result = openai.ChatCompletion.create(
+        timeout=10,
         model=model,
         messages=[
             {
@@ -27,6 +28,7 @@ Here is the summary:
 
 def summarize_comment(title, summary, comment, model="gpt-3.5-turbo-16k"):
     result = openai.ChatCompletion.create(
+        timeout=10,
         model=model,
         messages=[
             {
@@ -49,6 +51,7 @@ Write an extremely short (less than 5 words; no need for grammatically correct) 
 
 def matches_filter(summary, filter, model="gpt-3.5-turbo-16k"):
     result = openai.ChatCompletion.create(
+        timeout=10,
         model=model,
         messages=[
             {
