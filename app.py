@@ -30,7 +30,7 @@ PAPER_FILTER = """Papers related to:
 HELP = """Valid commands are:
 1. `news`
 2. `summarize <url>`. You can give me any url! I know how to handle reddit or hackernews comment threads, arxiv pages, and general webpages.
-3. `arxiv <category (e.g. `cs.AI`)> <description of papers to find>`
+3. `arxiv <category (e.g. cs)> <sub category (e.g. AI)> <description of papers to find>`
 
 If you are DM'ing me, you don't need to tag me. Otherwise make sure to tag me in the message!
 """
@@ -72,12 +72,13 @@ def handle_app_mention(event, say):
                 f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
             )
     elif parts[0] == "arxiv":
-        if len(parts) < 3:
+        if len(parts) < 4:
             say("Must include a arxiv category and description. " + HELP)
             return
         category = parts[1]
-        description = " ".join(parts[2:])
-        _arxiv_search(category, description, channel=event["channel"])
+        sub_category = parts[2]
+        description = " ".join(parts[3:])
+        _arxiv_search(category, sub_category, description, channel=event["channel"])
     else:
         say(f"Unrecognized command `{parts[0]}`. " + HELP)
         return
@@ -258,8 +259,9 @@ def _do_news(channel):
     add_line("\n\nEnjoy reading 🎉")
 
 
-def _arxiv_search(category, description, channel):
-    lines = [f"*arxiv {category} papers:*"]
+def _arxiv_search(category, sub_category, description, channel):
+    print(category, sub_category, description)
+    lines = [f"*arxiv {category}.{sub_category} papers:*"]
 
     news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
     thread = news.data["ts"]
@@ -295,7 +297,7 @@ def _arxiv_search(category, description, channel):
 
     set_progress_msg("Retrieving papers")
     num = 0
-    for paper in parse_arxiv.iter_todays_papers(category=category):
+    for paper in parse_arxiv.iter_todays_papers(category=f"{category}.{sub_category}"):
         set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         try:
             summary = lm.summarize_post(paper["title"], paper["abstract"])
