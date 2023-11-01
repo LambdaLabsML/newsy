@@ -30,6 +30,7 @@ PAPER_FILTER = """Papers related to:
 HELP = """Valid commands are:
 1. `news`
 2. `summarize <url>`. You can give me any url! I know how to handle reddit or hackernews comment threads, arxiv pages, and general webpages.
+3. `arxiv <category (e.g. `cs.AI`)> <description of papers to find>`
 """
 
 
@@ -67,6 +68,12 @@ def handle_app_mention(event, say):
             say(
                 f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
             )
+    elif parts[0] == "arxiv":
+        if len(parts) != 3:
+            say("Must include a arxiv category and description. " + HELP)
+            return
+        category, description = parts[1:]
+        _arxiv_search(category, description, channel=event["channel"])
     else:
         say(f"Unrecognized command `{parts[0]}`. " + HELP)
         return
@@ -227,6 +234,65 @@ def _do_news(channel):
             should_show = lm.matches_filter(
                 "Abstract:\n" + paper["abstract"] + "\n\nSummary:\n" + summary,
                 PAPER_FILTER,
+            )
+
+            msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
+            print(msg)
+            if should_show:
+                num += 1
+                add_line(msg)
+        except Exception as err:
+            print(err)
+    if num == 0:
+        add_line("_No more relevant papers from today._")
+
+    add_line("\n\nEnjoy reading 🎉")
+
+
+def _arxiv_search(category, description, channel):
+    lines = [f"*arxiv {category} papers:*"]
+
+    news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
+    thread = news.data["ts"]
+
+    def add_line(new_line):
+        lines.append(new_line)
+        for _ in range(3):
+            try:
+                app.client.chat_update(
+                    text="\n".join(lines),
+                    channel=channel,
+                    unfurl_links=False,
+                    unfurl_media=False,
+                    ts=thread,
+                )
+                return
+            except SlackApiError:
+                ...
+
+    def set_progress_msg(msg):
+        for _ in range(3):
+            try:
+                app.client.chat_update(
+                    text="\n".join(lines) + "\n\n_" + msg + "_\n",
+                    channel=channel,
+                    unfurl_links=False,
+                    unfurl_media=False,
+                    ts=thread,
+                )
+                return
+            except SlackApiError:
+                ...
+
+    set_progress_msg("Retrieving papers")
+    num = 0
+    for paper in parse_arxiv.iter_todays_papers(category=category):
+        set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
+        try:
+            summary = lm.summarize_post(paper["title"], paper["abstract"])
+            should_show = lm.matches_filter(
+                "Abstract:\n" + paper["abstract"] + "\n\nSummary:\n" + summary,
+                description,
             )
 
             msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
