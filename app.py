@@ -7,6 +7,8 @@ from slack_sdk.web import WebClient
 from slack_sdk.errors import SlackApiError
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+from datetime import datetime, timedelta
+import time
 
 from newsletter import lm, parse_arxiv, parse_hn, parse_reddit, parse_rss, util
 
@@ -31,6 +33,7 @@ HELP = """Valid commands are:
 1. `news`
 2. `summarize <url>`. You can give me any url! I know how to handle reddit or hackernews comment threads, arxiv pages, and general webpages.
 3. `arxiv <category (e.g. cs)> <sub category (e.g. AI)> <description of papers to find>`
+4. `subscribe <command>` - The command will be executed immediately, and then daily in your DMs
 
 If you are DM'ing me, you don't need to tag me. Otherwise make sure to tag me in the message!
 """
@@ -58,6 +61,12 @@ def handle_app_mention(event, say):
         assert parts[0].startswith("<@")  # the mention
         parts = parts[1:]
 
+    if parts[0] == "subscribe":
+        do_subscribe = True
+        parts = parts[1:]
+    else:
+        do_subscribe = False
+
     if parts[0] == "news":
         _do_news(channel=event["channel"])
     elif parts[0] == "summarize":
@@ -82,6 +91,13 @@ def handle_app_mention(event, say):
     else:
         say(f"Unrecognized command `{parts[0]}`. " + HELP)
         return
+
+    if do_subscribe:
+        app.client.chat_scheduleMessage(
+            channel=event["user"],
+            text="subscribe " + " ".join(parts),
+            post_at=int((datetime.now() + timedelta(days=1)).timestamp()),
+        )
 
 
 def _do_summarize(url, printl: Callable[[str], None]):
