@@ -31,6 +31,8 @@ HELP = """Valid commands are:
 1. `news`
 2. `summarize <url>`. You can give me any url! I know how to handle reddit or hackernews comment threads, arxiv pages, and general webpages.
 3. `arxiv <category (e.g. `cs.AI`)> <description of papers to find>`
+
+If you are DM'ing me, you don't need to tag me. Otherwise make sure to tag me in the message!
 """
 
 
@@ -46,12 +48,13 @@ def handle_app_mention(event, say):
             unfurl_media=False,
         )
 
-    parts = event["text"].split(" ")
     if event["type"] == "message":
         if event["channel_type"] != "im":
             return
+        parts = event["text"].split(" ")
     else:
         assert event["type"] == "app_mention"
+        parts = event["text"].split(" ")
         assert parts[0].startswith("<@")  # the mention
         parts = parts[1:]
 
@@ -116,20 +119,25 @@ def _do_summarize(url, printl: Callable[[str], None]):
 
         hn_discussion = parse_hn.search_for_url(url)
         if hn_discussion is not None:
-            lines = [
-                f"I also found a +{hn_discussion['score']} discussion on <{hn_discussion['comments_url']}|{hn_discussion['source']}>. It's centered around:"
-            ]
-            for i, c in enumerate(hn_discussion["comments"]):
-                comment_summary = lm.summarize_comment(
-                    hn_discussion["title"], summary, c["content"]
+            if len(hn_discussion["comments"]) == 0:
+                printl(
+                    f"I also found a +{hn_discussion['score']} discussion on <{hn_discussion['comments_url']}|{hn_discussion['source']}>. There aren't any comments yet though."
                 )
-                if "score" in c:
-                    lines.append(
-                        f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+            else:
+                lines = [
+                    f"I also found a +{hn_discussion['score']} discussion on <{hn_discussion['comments_url']}|{hn_discussion['source']}>. It's centered around:"
+                ]
+                for i, c in enumerate(hn_discussion["comments"]):
+                    comment_summary = lm.summarize_comment(
+                        hn_discussion["title"], summary, c["content"]
                     )
-                else:
-                    lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
-            printl("\n".join(lines))
+                    if "score" in c:
+                        lines.append(
+                            f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+                        )
+                    else:
+                        lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
+                printl("\n".join(lines))
 
 
 def _do_news(channel):
