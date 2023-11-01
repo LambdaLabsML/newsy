@@ -72,10 +72,11 @@ def handle_app_mention(event, say):
                 f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
             )
     elif parts[0] == "arxiv":
-        if len(parts) != 3:
+        if len(parts) < 3:
             say("Must include a arxiv category and description. " + HELP)
             return
-        category, description = parts[1:]
+        category = parts[1]
+        description = " ".join(parts[2:])
         _arxiv_search(category, description, channel=event["channel"])
     else:
         say(f"Unrecognized command `{parts[0]}`. " + HELP)
