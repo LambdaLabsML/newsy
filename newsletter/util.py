@@ -32,7 +32,7 @@ def get_details_from_url(url):
     if ele is None:
         ele = soup.body
 
-    title = soup.title.string
+    title = soup.title.string if soup.title is not None else ""
 
     if ele is not None:
         text = ele.get_text().strip()
