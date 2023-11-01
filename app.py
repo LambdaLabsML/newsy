@@ -28,8 +28,6 @@ PAPER_FILTER = """Papers related to:
 4. techniques for increasing sequence length of transformers.
 """
 
-DB_FILENAME = ".db"
-
 HELP = """Valid commands are:
 1. `news`
 2. `summarize <url>`. You can give me any url! I know how to handle reddit or hackernews comment threads, arxiv pages, and general webpages.
@@ -129,13 +127,6 @@ def _do_summarize(url, printl: Callable[[str], None]):
 
 
 def _do_news(channel):
-    if not os.path.exists(DB_FILENAME):
-        with open(DB_FILENAME, "w") as fp:
-            fp.write("[]")
-
-    with open(DB_FILENAME) as fp:
-        processed = set(json.load(fp))
-
     lines = ["Here's the latest news from today for you!"]
 
     news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
@@ -154,13 +145,6 @@ def _do_news(channel):
     add_line("\n*HackerNews:*")
     num = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
-        if post["comments_url"] in processed:
-            continue
-
-        processed.add(post["comments_url"])
-        with open(DB_FILENAME, "w") as fp:
-            json.dump(list(processed), fp)
-
         try:
             summary = lm.summarize_post(post["title"], post["content"])
             should_show = lm.matches_filter(summary, ARTICLE_FILTER)
@@ -178,13 +162,6 @@ def _do_news(channel):
     add_line("\n*/r/MachineLearning:*")
     num = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
-        if post["comments_url"] in processed:
-            continue
-
-        processed.add(post["comments_url"])
-        with open(DB_FILENAME, "w") as fp:
-            json.dump(list(processed), fp)
-
         try:
             summary = lm.summarize_post(post["title"], post["content"])
             should_show = lm.matches_filter(summary, ARTICLE_FILTER)
@@ -202,13 +179,6 @@ def _do_news(channel):
     add_line("\n*arxiv AI papers:*")
     num = 0
     for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
-        if paper["url"] in processed:
-            continue
-
-        processed.add(paper["url"])
-        with open(DB_FILENAME, "w") as fp:
-            json.dump(list(processed), fp)
-
         try:
             summary = lm.summarize_post(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
