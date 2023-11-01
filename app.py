@@ -95,8 +95,9 @@ def handle_app_mention(event, say):
     if do_subscribe:
         app.client.chat_scheduleMessage(
             channel=event["user"],
-            text="subscribe " + " ".join(parts),
+            text="@ai-news-bot subscribe " + " ".join(parts),
             post_at=int((datetime.now() + timedelta(days=1)).timestamp()),
+            as_user=True,
         )
 
 
