@@ -30,12 +30,20 @@ PAPER_FILTER = """Papers related to:
 """
 
 HELP = """Valid commands are:
-1. `news`
-2. `summarize <url>`. You can give me any url! I know how to handle reddit or hackernews comment threads, arxiv pages, and general webpages.
-3. `arxiv <category (e.g. cs)> <sub category (e.g. AI)> <description of papers to find>`
-4. `subscribe <command>` - The command will be executed immediately, and then daily in your DMs
+*`news`*
+> Pulls from a list of news sources related to AI/ML.
 
-If you are DM'ing me, you don't need to tag me. Otherwise make sure to tag me in the message!
+*`summarize <url>`*
+> Given any url, summarizes the content, and searches for related discussions on hacker news.
+
+*`arxiv <main category> <sub category> <description of papers to find>`*
+> Crawls arxiv for papers in the category & sub category that are related to the description that you give.
+> Main & sub categories can be found on this page <https://arxiv.org/category_taxonomy>.
+> For example, given the category `cs.AI`, the main category is `cs` and the sub category is `AI`.
+> Example command: `arxiv cs AI Papers related to Large language models, GPT, and prompting.`
+
+*`subscribe <command>`*
+> The command will be executed immediately, and then daily in your DMs. Command can be any of the above valid commands.
 """
 
 
