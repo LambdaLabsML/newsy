@@ -214,8 +214,10 @@ def _do_news(channel):
     add_line("\n*HackerNews:*")
     set_progress_msg("Retrieving posts")
     num = 0
+    total = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
         set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
+        total += 1
         try:
             summary = lm.summarize_post(post["title"], post["content"])
             should_show = lm.matches_filter(summary, ARTICLE_FILTER)
@@ -229,12 +231,15 @@ def _do_news(channel):
             print(err)
     if num == 0:
         add_line("_No more relevant posts from today._")
+    add_line(f"_Checked {total} posts._")
 
     add_line("\n*/r/MachineLearning:*")
     set_progress_msg("Retrieving posts")
     num = 0
+    total = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
         set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
+        total += 1
         try:
             summary = lm.summarize_post(post["title"], post["content"])
             should_show = lm.matches_filter(summary, ARTICLE_FILTER)
@@ -248,6 +253,7 @@ def _do_news(channel):
             print(err)
     if num == 0:
         add_line("_No more relevant posts from today._")
+    add_line(f"_Checked {total} posts._")
 
     for name, rss_feed in [
         ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
@@ -271,8 +277,10 @@ def _do_news(channel):
     add_line("\n*arxiv AI papers:*")
     set_progress_msg("Retrieving papers")
     num = 0
+    total = 0
     for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
         set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
+        total += 1
         try:
             summary = lm.summarize_post(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
@@ -289,6 +297,7 @@ def _do_news(channel):
             print(err)
     if num == 0:
         add_line("_No more relevant papers from today._")
+    add_line(f"_Checked {total} papers._")
 
     add_line("\n\nEnjoy reading 🎉")
 
@@ -331,8 +340,10 @@ def _arxiv_search(category, sub_category, description, channel):
 
     set_progress_msg("Retrieving papers")
     num = 0
+    total = 0
     for paper in parse_arxiv.iter_todays_papers(category=f"{category}.{sub_category}"):
         set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
+        total += 1
         try:
             summary = lm.summarize_post(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
@@ -349,6 +360,7 @@ def _arxiv_search(category, sub_category, description, channel):
             print(err)
     if num == 0:
         add_line("_No more relevant papers from today._")
+    add_line(f"_Checked {total} papers._")
 
     add_line("\n\nEnjoy reading 🎉")
 
