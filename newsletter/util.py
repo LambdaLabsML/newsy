@@ -2,6 +2,10 @@ import requests
 import bs4
 
 
+class ScrapePreventedError(Exception):
+    ...
+
+
 def get_json_from_url(url):
     response = requests.get(url, timeout=5)
     response.raise_for_status()
@@ -37,5 +41,8 @@ def get_details_from_url(url):
         text = ele.get_text().strip()
     else:
         text = " ".join(t.strip() for t in soup.findAll(text=True))
+
+    if len(text.strip()) == 0:
+        raise ScrapePreventedError()
 
     return {"title": title, "text": text}

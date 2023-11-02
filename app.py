@@ -88,6 +88,8 @@ def handle_app_mention(event, say):
             say(
                 f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
             )
+        except util.ScrapePreventedError as err:
+            say(f"This website prevented me accessing its content, sorry!")
     elif parts[0] == "arxiv":
         if len(parts) < 4:
             say("Must include a arxiv category and description. " + HELP)
@@ -105,7 +107,7 @@ def handle_app_mention(event, say):
         target_time = datetime.now() + timedelta(days=1)
         app.client.chat_scheduleMessage(
             channel=conversation["channel"]["id"],
-            text="@ai-news-bot subscribe " + " ".join(parts),
+            text="<@ai-news-bot> subscribe " + " ".join(parts),
             post_at=target_time.strftime("%s"),
         )
         app.client.chat_postMessage(
