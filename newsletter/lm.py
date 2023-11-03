@@ -27,6 +27,39 @@ Here is the bulleted list summary:
     return result.choices[0].message["content"]
 
 
+def summarize_abstract(title, content, model="gpt-3.5-turbo-16k"):
+    result = openai.ChatCompletion.create(
+        timeout=10,
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": f"""{title}
+
+{content}
+---
+
+Generate a bulleted list that summarizes the above paper abstract.
+There should be exactly 3 bullets describing:
+1. The motivation & why its important
+2. The method & how it works
+3. The results & how well it works
+
+The format of the summary must look like the following:
+```
+- *Motivation*: <description of motivation>
+- *Method*: <description of method>
+- *Results*: <description of results>
+```
+
+Here is the summary:
+""",
+            }
+        ],
+    )
+    return result.choices[0].message["content"]
+
+
 def summarize_comment(title, summary, comment, model="gpt-3.5-turbo-16k"):
     result = openai.ChatCompletion.create(
         timeout=10,

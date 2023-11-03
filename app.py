@@ -41,9 +41,6 @@ HELP = """Valid commands are:
 > Main & sub categories can be found on this page <https://arxiv.org/category_taxonomy>.
 > For example, given the category `cs.AI`, the main category is `cs` and the sub category is `AI`.
 > Example command: `arxiv cs AI Papers related to Large language models, GPT, and prompting.`
-
-*`subscribe <command>`*
-> The command will be executed immediately, and then daily in your DMs. Command can be any of the above valid commands.
 """
 
 
@@ -144,9 +141,10 @@ def _do_summarize(url, printl: Callable[[str], None]):
     elif "arxiv.org" in url:
         # arxiv abstract
         item = parse_arxiv.get_item(url)
-        summary = lm.summarize_post(item["title"], item["abstract"])
-        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
-        printl(f"For reference, here is the *Abstract*:\n{item['abstract']}")
+        summary = lm.summarize_abstract(item["title"], item["abstract"])
+        printl(
+            f"Here's the summary of the abstract for <{url}|{item['title']}>:\n{summary}"
+        )
     else:
         # generic web page
         item = util.get_details_from_url(url)
@@ -284,7 +282,7 @@ def _do_news(channel):
         set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
         try:
-            summary = lm.summarize_post(paper["title"], paper["abstract"])
+            summary = lm.summarize_abstract(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
                 "Abstract:\n" + paper["abstract"] + "\n\nSummary:\n" + summary,
                 PAPER_FILTER,
@@ -347,7 +345,7 @@ def _arxiv_search(category, sub_category, description, channel):
         set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
         try:
-            summary = lm.summarize_post(paper["title"], paper["abstract"])
+            summary = lm.summarize_abstract(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
                 "Abstract:\n" + paper["abstract"] + "\n\nSummary:\n" + summary,
                 description,
