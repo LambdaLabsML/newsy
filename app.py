@@ -140,18 +140,18 @@ def _do_summarize(url, printl: Callable[[str], None]):
             else:
                 lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
         printl("\n".join(lines))
-        printl(f"And here's the summary for you:\n> {summary}")
+        printl(f"And here's the summary for you:\n{summary}")
     elif "arxiv.org" in url:
         # arxiv abstract
         item = parse_arxiv.get_item(url)
         summary = lm.summarize_post(item["title"], item["abstract"])
-        printl(f"Here's the summary for <{url}|{item['title']}>:\n> {summary}")
+        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
         printl(f"For reference, here is the *Abstract*:\n{item['abstract']}")
     else:
         # generic web page
         item = util.get_details_from_url(url)
         summary = lm.summarize_post(item["title"], item["text"])
-        printl(f"Here's the summary for <{url}|{item['title']}>:\n> {summary}")
+        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
 
     discussions = [
         parse_hn.search_for_url(url) if not is_hn_comments else None,
