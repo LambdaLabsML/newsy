@@ -36,7 +36,7 @@ def search_for_url(url: str, num_comments=3):
             )
 
         return {
-            "source": item.subreddit.display_name,
+            "source": "/r/" + item.subreddit.display_name,
             "title": item.title,
             "score": item.score,
             "content_url": item.url,
@@ -77,7 +77,7 @@ def get_item(url: str, num_comments=3):
         )
 
     return {
-        "source": item.subreddit.display_name,
+        "source": "/r/" + item.subreddit.display_name,
         "title": item.title,
         "score": item.score,
         "content_url": item.url,

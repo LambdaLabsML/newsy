@@ -18,6 +18,7 @@ Generate a bulleted list that summarizes the main points from the above article.
 2. Conciseness over grammatical correctness.
 3. Ability for general audience to understand.
 4. Write the summary as if a 5 year old was the reader.
+Generate at most 3 bullet points.
 Here is the bulleted list summary:
 """,
             }
