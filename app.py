@@ -153,27 +153,29 @@ def _do_summarize(url, printl: Callable[[str], None]):
         summary = lm.summarize_post(item["title"], item["text"])
         printl(f"Here's the summary for <{url}|{item['title']}>:\n> {summary}")
 
-        hn_discussion = parse_hn.search_for_url(url)
-        if hn_discussion is not None:
-            if len(hn_discussion["comments"]) == 0:
-                printl(
-                    f"I also found a +{hn_discussion['score']} discussion on <{hn_discussion['comments_url']}|{hn_discussion['source']}>. There aren't any comments yet though."
+    discussions = [
+        parse_hn.search_for_url(url) if not is_hn_comments else None,
+        parse_reddit.search_for_url(url) if not is_reddit_comments else None,
+    ]
+    for discussion in filter(None, discussions):
+        lines = [
+            f"I also found a +{discussion['score']} discussion on <{discussion['comments_url']}|{discussion['source']}>."
+        ]
+        if len(discussion["comments"]) == 0:
+            lines[0] += " There aren't any comments though."
+        else:
+            lines[0] += " It's centered around:"
+            for i, c in enumerate(discussion["comments"]):
+                comment_summary = lm.summarize_comment(
+                    discussion["title"], summary, c["content"]
                 )
-            else:
-                lines = [
-                    f"I also found a +{hn_discussion['score']} discussion on <{hn_discussion['comments_url']}|{hn_discussion['source']}>. It's centered around:"
-                ]
-                for i, c in enumerate(hn_discussion["comments"]):
-                    comment_summary = lm.summarize_comment(
-                        hn_discussion["title"], summary, c["content"]
+                if "score" in c:
+                    lines.append(
+                        f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
                     )
-                    if "score" in c:
-                        lines.append(
-                            f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
-                        )
-                    else:
-                        lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
-                printl("\n".join(lines))
+                else:
+                    lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
+        printl("\n".join(lines))
 
 
 def _do_news(channel):

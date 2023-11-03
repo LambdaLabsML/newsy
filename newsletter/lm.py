@@ -13,12 +13,12 @@ def summarize_post(title, content, model="gpt-3.5-turbo-16k"):
 {content}
 ---
 
-Generate a summary for the above article. Prioritize:
+Generate a bulleted list that summarizes the main points from the above article. Prioritize:
 1. Reducing the mental burden of reading the summary.
 2. Conciseness over grammatical correctness.
 3. Ability for general audience to understand.
 4. Write the summary as if a 5 year old was the reader.
-Here is the summary:
+Here is the bulleted list summary:
 """,
             }
         ],
