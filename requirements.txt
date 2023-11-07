@@ -7,3 +7,4 @@ beautifulsoup4==4.12.2
 arxiv==2.0.0
 slack-bolt==1.18.0
 lxml
+langchain
