@@ -174,6 +174,9 @@ def _do_summarize(url, printl: Callable[[str], None]):
                 else:
                     lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
         printl("\n".join(lines))
+    printl(
+        f"Here's all the discussion happening on <https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>"
+    )
 
 
 def _do_news(channel):
