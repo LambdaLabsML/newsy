@@ -85,8 +85,16 @@ def handle_app_mention(event, say):
             say(
                 f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
             )
+            raise
         except util.ScrapePreventedError as err:
             say(f"This website prevented me accessing its content, sorry!")
+            raise
+        except requests.exceptions.ReadTimeout as err:
+            say(f"My request to {err.request.url} timed out, sorry!")
+            raise
+        except Exception as err:
+            say(f"Sorry I encountered an error: {err}")
+            raise
     elif parts[0] == "arxiv":
         if len(parts) < 4:
             say("Must include a arxiv category and description. " + HELP)
