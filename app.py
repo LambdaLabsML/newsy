@@ -79,22 +79,7 @@ def handle_app_mention(event, say):
             say("Missing a link to summarize. " + HELP)
             return
         url = parts[1][1:-1]  # strip off the < and >
-        try:
-            _do_summarize(url, printl)
-        except requests.exceptions.HTTPError as err:
-            say(
-                f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
-            )
-            raise
-        except util.ScrapePreventedError as err:
-            say(f"This website prevented me accessing its content, sorry!")
-            raise
-        except requests.exceptions.ReadTimeout as err:
-            say(f"My request to {err.request.url} timed out, sorry!")
-            raise
-        except Exception as err:
-            say(f"Sorry I encountered an error: {err}")
-            raise
+        _do_summarize(url, printl)
     elif parts[0] == "arxiv":
         if len(parts) < 4:
             say("Must include a arxiv category and description. " + HELP)
@@ -124,54 +109,64 @@ def handle_app_mention(event, say):
 
 
 def _do_summarize(url, printl: Callable[[str], None]):
-    if "twitter.com" in url:
-        raise util.ScrapePreventedError("Twitter prevented me from scraping, sorry!")
-
-    is_reddit_comments = "reddit.com" in url and "comments" in url
-    is_hn_comments = "news.ycombinator.com/item" in url
-    if is_reddit_comments or is_hn_comments:
-        # reddit post comments or hackernews comments
-        if "reddit.com" in url:
-            item = parse_reddit.get_item(url)
-        else:
-            item = parse_hn.get_item(url)
-
-        summary = lm.summarize_post(item["title"], item["content"])
-
-        lines = [
-            f"The discussion on <{item['content_url']}|{item['title']}> at <{item['comments_url']}|{item['source']}> is centered around:"
-        ]
-        for i, c in enumerate(item["comments"]):
-            comment_summary = lm.summarize_comment(item["title"], summary, c["content"])
-            if "score" in c:
-                lines.append(f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>")
+    try:
+        is_reddit_comments = "reddit.com" in url and "comments" in url
+        is_hn_comments = "news.ycombinator.com/item" in url
+        if "twitter.com" in url:
+            raise util.ScrapePreventedError()
+        elif is_reddit_comments or is_hn_comments:
+            # reddit post comments or hackernews comments
+            if "reddit.com" in url:
+                item = parse_reddit.get_item(url)
             else:
-                lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
-        printl("\n".join(lines))
-        printl(f"And here's the summary for you:\n{summary}")
-    elif "arxiv.org" in url:
-        # arxiv abstract
-        item = parse_arxiv.get_item(url)
-        summary = lm.summarize_abstract(item["title"], item["abstract"])
+                item = parse_hn.get_item(url)
+
+            summary = lm.summarize_post(item["title"], item["content"])
+
+            lines = [
+                f"The discussion on <{item['content_url']}|{item['title']}> at <{item['comments_url']}|{item['source']}> is centered around:"
+            ]
+            for i, c in enumerate(item["comments"]):
+                comment_summary = lm.summarize_comment(
+                    item["title"], summary, c["content"]
+                )
+                if "score" in c:
+                    lines.append(
+                        f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+                    )
+                else:
+                    lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
+            printl("\n".join(lines))
+            printl(f"And here's the summary for you:\n{summary}")
+        elif "arxiv.org" in url:
+            # arxiv abstract
+            item = parse_arxiv.get_item(url)
+            summary = lm.summarize_abstract(item["title"], item["abstract"])
+            printl(
+                f"Here's the summary of the abstract for <{url}|{item['title']}>:\n{summary}"
+            )
+        else:
+            # generic web page
+            item = util.get_details_from_url(url)
+            summary = lm.summarize_post(item["title"], item["text"])
+            printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
+    except requests.exceptions.HTTPError as err:
         printl(
-            f"Here's the summary of the abstract for <{url}|{item['title']}>:\n{summary}"
+            f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
         )
-    else:
-        # generic web page
-        item = util.get_details_from_url(url)
-        summary = lm.summarize_post(item["title"], item["text"])
-        printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
+    except util.ScrapePreventedError as err:
+        printl(f"This website prevented me accessing its content, sorry!")
+    except requests.exceptions.ReadTimeout as err:
+        printl(f"My request to {err.request.url} timed out, sorry!")
+    except Exception as err:
+        printl(f"Sorry I encountered an error: {err}")
 
     discussions = []
     if not is_hn_comments:
         discussions.append(("HackerNews", parse_hn.search_for_url(url)))
     if not is_reddit_comments:
-        discussions.append(
-            (
-                "reddit",
-                parse_reddit.search_for_url(url) if not is_reddit_comments else None,
-            )
-        )
+        discussions.append(("reddit", parse_reddit.search_for_url(url)))
+
     for name, discussion in discussions:
         if discussion is None:
             printl(f"I wasn't able to find a discussion on {name} for this post.")
