@@ -159,11 +159,20 @@ def _do_summarize(url, printl: Callable[[str], None]):
         summary = lm.summarize_post(item["title"], item["text"])
         printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
 
-    discussions = [
-        parse_hn.search_for_url(url) if not is_hn_comments else None,
-        parse_reddit.search_for_url(url) if not is_reddit_comments else None,
-    ]
-    for discussion in filter(None, discussions):
+    discussions = []
+    if not is_hn_comments:
+        discussions.append(("HackerNews", parse_hn.search_for_url(url)))
+    if not is_reddit_comments:
+        discussions.append(
+            (
+                "reddit",
+                parse_reddit.search_for_url(url) if not is_reddit_comments else None,
+            )
+        )
+    for name, discussion in discussions:
+        if discussion is None:
+            printl(f"I wasn't able to find a discussion on {name} for this post.")
+            continue
         lines = [
             f"I also found a +{discussion['score']} discussion on <{discussion['comments_url']}|{discussion['source']}>."
         ]

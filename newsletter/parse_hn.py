@@ -72,8 +72,8 @@ def get_item(url: str, num_comments=3):
         )
     return {
         "source": "HackerNews",
-        "title": item["title"],
-        "score": item["score"],
+        "title": item["title"] if "title" in item else "Comment Thread",
+        "score": item["score"] if "score" in item else 0,
         "content_url": item.get("url", comments_url),
         "comments_url": comments_url,
         "content": content,
