@@ -268,22 +268,25 @@ def _do_news(channel):
 
     for name, rss_feed in [
         ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
-        ("StabilityAI Blog", "https://stability.ai/blog?format=rss"),
+        ("StabilityAI Blog", "https://stability.ai/news?format=rss"),
         ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
     ]:
         add_line(f"\n*{name}:*")
         set_progress_msg("Retrieving rss feed items")
-        num = 0
-        for item in parse_rss.iter_items_from_today(rss_feed):
-            try:
-                msg = f"{num + 1}. <{item['url']}|{item['title']}>"
-                print(msg)
-                num += 1
-                add_line(msg)
-            except Exception as err:
-                print(err)
-        if num == 0:
-            add_line("_No posts from today._")
+        try:
+            num = 0
+            for item in parse_rss.iter_items_from_today(rss_feed):
+                try:
+                    msg = f"{num + 1}. <{item['url']}|{item['title']}>"
+                    print(msg)
+                    num += 1
+                    add_line(msg)
+                except Exception as err:
+                    print(err)
+            if num == 0:
+                add_line("_No posts from today._")
+        except Exception as err:
+            add_line(f"_Encountered error pulling from this rss feed: {err}_")
 
     add_line("\n*arxiv AI papers:*")
     set_progress_msg("Retrieving papers")
