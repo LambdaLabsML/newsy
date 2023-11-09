@@ -124,6 +124,9 @@ def handle_app_mention(event, say):
 
 
 def _do_summarize(url, printl: Callable[[str], None]):
+    if "twitter.com" in url:
+        raise util.ScrapePreventedError("Twitter prevented me from scraping, sorry!")
+
     is_reddit_comments = "reddit.com" in url and "comments" in url
     is_hn_comments = "news.ycombinator.com/item" in url
     if is_reddit_comments or is_hn_comments:
