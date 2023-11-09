@@ -110,9 +110,10 @@ def handle_app_mention(event, say):
 
 def _do_summarize(url, printl: Callable[[str], None]):
     try:
+        is_twitter_post = "twitter.com" in url
         is_reddit_comments = "reddit.com" in url and "comments" in url
         is_hn_comments = "news.ycombinator.com/item" in url
-        if "twitter.com" in url:
+        if is_twitter_post:
             raise util.ScrapePreventedError()
         elif is_reddit_comments or is_hn_comments:
             # reddit post comments or hackernews comments
@@ -189,9 +190,10 @@ def _do_summarize(url, printl: Callable[[str], None]):
                 else:
                     lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
         printl("\n".join(lines))
-    printl(
-        f"Here's all the discussion happening on <https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>"
-    )
+    if not is_twitter_post:
+        printl(
+            f"Here's all the discussion happening on <https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>"
+        )
 
 
 def _do_news(channel):
