@@ -56,8 +56,13 @@ def handle_app_mention(event, say):
             unfurl_media=False,
         )
 
+    print(event)
+
     if event["type"] == "message":
-        if event["channel_type"] != "im":
+        if (
+            event["channel_type"] != "im"
+            or event.get("subtype", "") == "message_changed"
+        ):
             return
         parts = event["text"].split(" ")
     else:
@@ -127,35 +132,38 @@ def _do_summarize(url, printl: Callable[[str], None]):
             summary = lm.summarize_post(item["title"], item["content"])
 
             lines = [
-                f"The discussion on <{item['content_url']}|{item['title']}> at <{item['comments_url']}|{item['source']}> is centered around:"
+                f"*<{item['content_url']}|{item['title']}>* discusses:",
+                summary,
+                "",
+                f"*<{item['comments_url']}|{item['source']}>* has a a +{item['score']} discussion",
             ]
-            for i, c in enumerate(item["comments"]):
-                comment_summary = lm.summarize_comment(
-                    item["title"], summary, c["content"]
-                )
-                if "score" in c:
-                    lines.append(
-                        f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+            if len(item["comments"]) == 0:
+                lines[-1] += ", but there aren't any comments."
+            else:
+                lines[-1] += " centered around:"
+                for i, c in enumerate(item["comments"]):
+                    comment_summary = lm.summarize_comment(
+                        item["title"], summary, c["content"]
                     )
-                else:
-                    lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
-            lines.append("And here's the summary for you:")
-            lines.append(summary)
+                    if "score" in c:
+                        lines.append(
+                            f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
+                        )
+                    else:
+                        lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
             sections.append("\n".join(lines))
         elif "arxiv.org" in url:
             # arxiv abstract
             item = parse_arxiv.get_item(url)
             summary = lm.summarize_abstract(item["title"], item["abstract"])
             sections.append(
-                f"Here's the summary of the abstract for <{url}|{item['title']}>:\n{summary}"
+                f"The abstract for *<{url}|{item['title']}>* discusses:\n{summary}"
             )
         else:
             # generic web page
             item = util.get_details_from_url(url)
             summary = lm.summarize_post(item["title"], item["text"])
-            sections.append(
-                f"Here's the summary for <{url}|{item['title']}>:\n{summary}"
-            )
+            sections.append(f"*<{url}|{item['title']}>* discusses:\n{summary}")
     except requests.exceptions.HTTPError as err:
         sections.append(
             f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
@@ -175,17 +183,15 @@ def _do_summarize(url, printl: Callable[[str], None]):
 
     for name, discussion in discussions:
         if discussion is None:
-            sections.append(
-                f"I wasn't able to find a discussion on {name} for this post."
-            )
+            sections.append(f"*{name}* doesn't have a discussion for this url yet.")
             continue
         lines = [
-            f"Here's a +{discussion['score']} discussion on <{discussion['comments_url']}|{discussion['source']}>."
+            f"*<{discussion['comments_url']}|{discussion['source']}>* has a a +{discussion['score']} discussion"
         ]
         if len(discussion["comments"]) == 0:
-            lines[0] += " There aren't any comments though."
+            lines[0] += ", but there aren't any comments."
         else:
-            lines[0] += " It's centered around:"
+            lines[0] += " centered around:"
             for i, c in enumerate(discussion["comments"]):
                 comment_summary = lm.summarize_comment(
                     discussion["title"], summary, c["content"]
@@ -199,7 +205,7 @@ def _do_summarize(url, printl: Callable[[str], None]):
         sections.append("\n".join(lines))
     if not is_twitter_post:
         sections.append(
-            f"Here's all the discussion happening on <https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>"
+            f"You can search for tweets discussing this url on *<https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>*"
         )
 
     printl("\n\n".join(sections))
