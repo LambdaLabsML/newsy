@@ -56,36 +56,39 @@ def handle_app_mention(event, say):
             unfurl_media=False,
         )
 
-    print(event)
+    # message_changed events happen when slack adds the preview for urls
+    # app_mention's also get an identical message event, but we filter them out by checking for channel_type != im
+    if event["type"] == "message" and (
+        event["channel_type"] != "im" or event.get("subtype", "") == "message_changed"
+    ):
+        return
 
-    if event["type"] == "message":
-        if (
-            event["channel_type"] != "im"
-            or event.get("subtype", "") == "message_changed"
-        ):
-            return
-        parts = event["text"].split(" ")
-    else:
-        assert event["type"] == "app_mention"
-        parts = event["text"].split(" ")
-        assert parts[0].startswith("<@")  # the mention
-        parts = parts[1:]
+    assert len(event["blocks"]) == 1
+    assert event["blocks"][0]["type"] == "rich_text"
+    assert len(event["blocks"][0]["elements"]) == 1
+    assert event["blocks"][0]["elements"][0]["type"] == "rich_text_section"
+    parts = event["blocks"][0]["elements"][0]["elements"]
 
-    if parts[0] == "subscribe":
-        do_subscribe = True
-        parts = parts[1:]
-    else:
-        do_subscribe = False
+    # strip out the app mention part
+    if event["type"] == "app_mention":
+        parts = [p for p in parts if p["type"] != "user"]
 
-    if parts[0] == "news":
+    if parts[0]["type"] != "text":
+        say(f"Unrecognized command `{parts[0]}`. " + HELP)
+        return
+
+    command = parts[0]["text"].strip()
+
+    if command == "news":
         _do_news(channel=event["channel"])
-    elif parts[0] == "summarize":
-        if len(parts) != 2:
+    elif command == "summarize":
+        if len(parts) != 2 or parts[1]["type"] != "link":
             say("Missing a link to summarize. " + HELP)
             return
-        url = parts[1][1:-1]  # strip off the < and >
-        _do_summarize(url, printl)
-    elif parts[0] == "arxiv":
+        _do_summarize(parts[1]["url"], printl)
+    elif command == "arxiv":
+        assert len(parts) == 1
+        parts = command.split(" ")
         if len(parts) < 4:
             say("Must include a arxiv category and description. " + HELP)
             return
@@ -94,23 +97,8 @@ def handle_app_mention(event, say):
         description = " ".join(parts[3:])
         _arxiv_search(category, sub_category, description, channel=event["channel"])
     else:
-        say(f"Unrecognized command `{parts[0]}`. " + HELP)
+        say(f"Unrecognized command `{command}`. " + HELP)
         return
-
-    if do_subscribe:
-        conversation = app.client.conversations_open(users=event["user"])
-        target_time = datetime.now() + timedelta(days=1)
-        app.client.chat_scheduleMessage(
-            channel=conversation["channel"]["id"],
-            text="<@ai-news-bot> subscribe " + " ".join(parts),
-            post_at=target_time.strftime("%s"),
-        )
-        app.client.chat_postMessage(
-            channel=conversation["channel"]["id"],
-            text="Hi there! You're all set up to receive {} at {}.".format(
-                " ".join(parts), target_time
-            ),
-        )
 
 
 def _do_summarize(url, printl: Callable[[str], None]):
