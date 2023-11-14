@@ -109,6 +109,8 @@ def handle_app_mention(event, say):
 
 
 def _do_summarize(url, printl: Callable[[str], None]):
+    sections = []
+
     try:
         is_twitter_post = "twitter.com" in url
         is_reddit_comments = "reddit.com" in url and "comments" in url
@@ -137,30 +139,33 @@ def _do_summarize(url, printl: Callable[[str], None]):
                     )
                 else:
                     lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
-            printl("\n".join(lines))
-            printl(f"And here's the summary for you:\n{summary}")
+            lines.append("And here's the summary for you:")
+            lines.append(summary)
+            sections.append("\n".join(lines))
         elif "arxiv.org" in url:
             # arxiv abstract
             item = parse_arxiv.get_item(url)
             summary = lm.summarize_abstract(item["title"], item["abstract"])
-            printl(
+            sections.append(
                 f"Here's the summary of the abstract for <{url}|{item['title']}>:\n{summary}"
             )
         else:
             # generic web page
             item = util.get_details_from_url(url)
             summary = lm.summarize_post(item["title"], item["text"])
-            printl(f"Here's the summary for <{url}|{item['title']}>:\n{summary}")
+            sections.append(
+                f"Here's the summary for <{url}|{item['title']}>:\n{summary}"
+            )
     except requests.exceptions.HTTPError as err:
-        printl(
+        sections.append(
             f"I'm unable to access this link for some reason (I get a {err.response.status_code} status code when I request access). Sorry!"
         )
     except util.ScrapePreventedError as err:
-        printl(f"This website prevented me accessing its content, sorry!")
+        sections.append(f"This website prevented me accessing its content, sorry!")
     except requests.exceptions.ReadTimeout as err:
-        printl(f"My request to {err.request.url} timed out, sorry!")
+        sections.append(f"My request to {err.request.url} timed out, sorry!")
     except Exception as err:
-        printl(f"Sorry I encountered an error: {err}")
+        sections.append(f"Sorry I encountered an error: {err}")
 
     discussions = []
     if not is_hn_comments:
@@ -170,10 +175,12 @@ def _do_summarize(url, printl: Callable[[str], None]):
 
     for name, discussion in discussions:
         if discussion is None:
-            printl(f"I wasn't able to find a discussion on {name} for this post.")
+            sections.append(
+                f"I wasn't able to find a discussion on {name} for this post."
+            )
             continue
         lines = [
-            f"I also found a +{discussion['score']} discussion on <{discussion['comments_url']}|{discussion['source']}>."
+            f"Here's a +{discussion['score']} discussion on <{discussion['comments_url']}|{discussion['source']}>."
         ]
         if len(discussion["comments"]) == 0:
             lines[0] += " There aren't any comments though."
@@ -189,11 +196,13 @@ def _do_summarize(url, printl: Callable[[str], None]):
                     )
                 else:
                     lines.append(f"{i + 1}. <{c['url']}|{comment_summary}>")
-        printl("\n".join(lines))
+        sections.append("\n".join(lines))
     if not is_twitter_post:
-        printl(
+        sections.append(
             f"Here's all the discussion happening on <https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>"
         )
+
+    printl("\n\n".join(sections))
 
 
 def _do_news(channel):
