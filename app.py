@@ -123,7 +123,7 @@ def _do_summarize(url, printl: Callable[[str], None]):
                 f"*<{item['content_url']}|{item['title']}>* discusses:",
                 summary,
                 "",
-                f"*<{item['comments_url']}|{item['source']}>* has a a +{item['score']} discussion",
+                f"*<{item['comments_url']}|{item['source']}>* has a +{item['score']} discussion",
             ]
             if len(item["comments"]) == 0:
                 lines[-1] += ", but there aren't any comments."
@@ -174,7 +174,7 @@ def _do_summarize(url, printl: Callable[[str], None]):
             sections.append(f"*{name}* doesn't have a discussion for this url yet.")
             continue
         lines = [
-            f"*<{discussion['comments_url']}|{discussion['source']}>* has a a +{discussion['score']} discussion"
+            f"*<{discussion['comments_url']}|{discussion['source']}>* has a +{discussion['score']} discussion"
         ]
         if len(discussion["comments"]) == 0:
             lines[0] += ", but there aren't any comments."
