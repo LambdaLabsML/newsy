@@ -264,14 +264,10 @@ def _do_news(channel):
         set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
         try:
-            summary = lm.summarize_post(post["title"], post["content"])
-            should_show = lm.matches_filter(summary, ARTICLE_FILTER)
-
             msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
             print(msg)
-            if should_show:
-                num += 1
-                add_line(msg)
+            num += 1
+            add_line(msg)
         except Exception as err:
             print(err)
     if num == 0:
@@ -308,10 +304,8 @@ def _do_news(channel):
         set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
         try:
-            summary = lm.summarize_abstract(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
-                "Abstract:\n" + paper["abstract"] + "\n\nSummary:\n" + summary,
-                PAPER_FILTER,
+                "Abstract:\n" + paper["abstract"], PAPER_FILTER
             )
 
             msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
@@ -371,12 +365,9 @@ def _arxiv_search(category, sub_category, description, channel):
         set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
         try:
-            summary = lm.summarize_abstract(paper["title"], paper["abstract"])
             should_show = lm.matches_filter(
-                "Abstract:\n" + paper["abstract"] + "\n\nSummary:\n" + summary,
-                description,
+                "Abstract:\n" + paper["abstract"], description
             )
-
             msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
             print(msg)
             if should_show:
