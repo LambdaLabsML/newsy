@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import time
 
 from newsletter import lm, parse_arxiv, parse_hn, parse_reddit, parse_rss, util
+from newsletter.slack import EditableMessage
 
 app = App(
     client=WebClient(
@@ -213,46 +214,17 @@ def _do_summarize(url, printl: Callable[[str], None]):
 
 
 def _do_news(channel):
-    lines = ["Here's the latest news from today for you!"]
+    news = EditableMessage(
+        app.client, channel, "Here's the latest news from today for you!"
+    )
 
-    news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
-    thread = news.data["ts"]
-
-    def add_line(new_line):
-        lines.append(new_line)
-        for _ in range(3):
-            try:
-                app.client.chat_update(
-                    text="\n".join(lines),
-                    channel=channel,
-                    unfurl_links=False,
-                    unfurl_media=False,
-                    ts=thread,
-                )
-                return
-            except SlackApiError:
-                ...
-
-    def set_progress_msg(msg):
-        for _ in range(3):
-            try:
-                app.client.chat_update(
-                    text="\n".join(lines) + "\n\n_" + msg + "_\n",
-                    channel=channel,
-                    unfurl_links=False,
-                    unfurl_media=False,
-                    ts=thread,
-                )
-                return
-            except SlackApiError:
-                ...
-
-    add_line("\n*HackerNews:*")
-    set_progress_msg("Retrieving posts")
+    news.start_new_section()
+    news.add_line("*HackerNews:*")
+    news.set_progress_msg("Retrieving posts")
     num = 0
     total = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
-        set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
+        news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
         try:
             should_show = lm.matches_filter(
@@ -263,38 +235,40 @@ def _do_news(channel):
             print(msg)
             if should_show:
                 num += 1
-                add_line(msg)
+                news.lazy_add_line(msg)
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No more relevant posts from today._")
-    add_line(f"_Checked {total} posts._")
+        news.add_line("_No more relevant posts from today._")
+    news.add_line(f"_Checked {total} posts._")
 
-    add_line("\n*/r/MachineLearning:*")
-    set_progress_msg("Retrieving posts")
+    news.start_new_section()
+    news.add_line("*/r/MachineLearning:*")
+    news.set_progress_msg("Retrieving posts")
     num = 0
     total = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
-        set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
+        news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
         try:
             msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
             print(msg)
             num += 1
-            add_line(msg)
+            news.lazy_add_line(msg)
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No more relevant posts from today._")
-    add_line(f"_Checked {total} posts._")
+        news.add_line("_No more relevant posts from today._")
+    news.add_line(f"_Checked {total} posts._")
 
     for name, rss_feed in [
         ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
         ("StabilityAI Blog", "https://stability.ai/news?format=rss"),
         ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
     ]:
-        add_line(f"\n*{name}:*")
-        set_progress_msg("Retrieving rss feed items")
+        news.start_new_section()
+        news.add_line(f"*{name}:*")
+        news.set_progress_msg("Retrieving rss feed items")
         try:
             num = 0
             for item in parse_rss.iter_items_from_today(rss_feed):
@@ -302,20 +276,21 @@ def _do_news(channel):
                     msg = f"{num + 1}. <{item['url']}|{item['title']}>"
                     print(msg)
                     num += 1
-                    add_line(msg)
+                    news.lazy_add_line(msg)
                 except Exception as err:
                     print(err)
             if num == 0:
-                add_line("_No posts from today._")
+                news.add_line("_No posts from today._")
         except Exception as err:
-            add_line(f"_Encountered error pulling from this rss feed: {err}_")
+            news.add_line(f"_Encountered error pulling from this rss feed: {err}_")
 
-    add_line("\n*arxiv AI papers:*")
-    set_progress_msg("Retrieving papers")
+    news.start_new_section()
+    news.add_line("*arxiv AI papers:*")
+    news.set_progress_msg("Retrieving papers")
     num = 0
     total = 0
     for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
-        set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
+        news.set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
         try:
             should_show = lm.matches_filter(
@@ -326,57 +301,25 @@ def _do_news(channel):
             print(msg)
             if should_show:
                 num += 1
-                add_line(msg)
+                news.lazy_add_line(msg)
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No more relevant papers from today._")
-    add_line(f"_Checked {total} papers._")
-
-    add_line("\n\nEnjoy reading 🎉")
+        news.add_line("_No more relevant papers from today._")
+    news.add_line(f"_Checked {total} papers._")
+    news.add_line("\n\nEnjoy reading 🎉")
 
 
 def _arxiv_search(category, sub_category, description, channel):
-    print(category, sub_category, description)
-    lines = [f"*arxiv {category}.{sub_category} papers:*"]
+    news = EditableMessage(
+        app.client, channel, f"*arxiv {category}.{sub_category} papers:*"
+    )
 
-    news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
-    thread = news.data["ts"]
-
-    def add_line(new_line):
-        lines.append(new_line)
-        for _ in range(3):
-            try:
-                app.client.chat_update(
-                    text="\n".join(lines),
-                    channel=channel,
-                    unfurl_links=False,
-                    unfurl_media=False,
-                    ts=thread,
-                )
-                return
-            except SlackApiError:
-                ...
-
-    def set_progress_msg(msg):
-        for _ in range(3):
-            try:
-                app.client.chat_update(
-                    text="\n".join(lines) + "\n\n_" + msg + "_\n",
-                    channel=channel,
-                    unfurl_links=False,
-                    unfurl_media=False,
-                    ts=thread,
-                )
-                return
-            except SlackApiError:
-                ...
-
-    set_progress_msg("Retrieving papers")
+    news.set_progress_msg("Retrieving papers")
     num = 0
     total = 0
     for paper in parse_arxiv.iter_todays_papers(category=f"{category}.{sub_category}"):
-        set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
+        news.set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
         try:
             should_show = lm.matches_filter(
@@ -386,56 +329,23 @@ def _arxiv_search(category, sub_category, description, channel):
             print(msg)
             if should_show:
                 num += 1
-                add_line(msg)
+                news.lazy_add_line(msg)
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No more relevant papers from today._")
-    add_line(f"_Checked {total} papers._")
-
-    add_line("\n\nEnjoy reading 🎉")
+        news.add_line("_No more relevant papers from today._")
+    news.add_line(f"_Checked {total} papers._")
+    news.add_line("\n\nEnjoy reading 🎉")
 
 
 def _reddit_search(subreddit_name, description, channel):
-    lines = [f"*/r/{subreddit_name} posts:*"]
+    news = EditableMessage(app.client, channel, f"*/r/{subreddit_name} posts:*")
 
-    news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
-    thread = news.data["ts"]
-
-    def add_line(new_line):
-        lines.append(new_line)
-        for _ in range(3):
-            try:
-                app.client.chat_update(
-                    text="\n".join(lines),
-                    channel=channel,
-                    unfurl_links=False,
-                    unfurl_media=False,
-                    ts=thread,
-                )
-                return
-            except SlackApiError:
-                ...
-
-    def set_progress_msg(msg):
-        for _ in range(3):
-            try:
-                app.client.chat_update(
-                    text="\n".join(lines) + "\n\n_" + msg + "_\n",
-                    channel=channel,
-                    unfurl_links=False,
-                    unfurl_media=False,
-                    ts=thread,
-                )
-                return
-            except SlackApiError:
-                ...
-
-    set_progress_msg("Retrieving posts")
+    news.set_progress_msg("Retrieving posts")
     num = 0
     total = 0
     for post in parse_reddit.iter_top_posts(subreddit_name, num_posts=25):
-        set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
+        news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
         try:
             should_show = lm.matches_filter(
@@ -445,12 +355,12 @@ def _reddit_search(subreddit_name, description, channel):
             print(msg)
             if should_show:
                 num += 1
-                add_line(msg)
+                news.lazy_add_line(msg)
         except Exception as err:
             print(err)
     if num == 0:
-        add_line("_No more relevant posts from today._")
-    add_line(f"_Checked {total} posts._")
+        news.add_line("_No more relevant posts from today._")
+    news.add_line(f"_Checked {total} posts._")
 
 
 if __name__ == "__main__":
