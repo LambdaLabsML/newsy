@@ -242,8 +242,9 @@ def _do_news(channel):
         set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
         try:
-            summary = lm.summarize_post(post["title"], post["content"])
-            should_show = lm.matches_filter(summary, ARTICLE_FILTER)
+            should_show = lm.matches_filter(
+                post["title"] + "\n\n" + post["content"], ARTICLE_FILTER
+            )
 
             msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
             print(msg)
