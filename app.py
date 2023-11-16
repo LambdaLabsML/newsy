@@ -41,6 +41,10 @@ HELP = """Valid commands are:
 > Main & sub categories can be found on this page <https://arxiv.org/category_taxonomy>.
 > For example, given the category `cs.AI`, the main category is `cs` and the sub category is `AI`.
 > Example command: `arxiv cs AI Papers related to Large language models, GPT, and prompting.`
+
+*`reddit <subreddit name> <description of posts to find>`*
+> Crawls a specific subreddit for *top posts over the last day* that match the descrtiption you give.
+> Example command: `reddit Programming Posts related to security breaches or cyber security.`
 """
 
 
@@ -86,7 +90,7 @@ def handle_app_mention(event, say):
             say("Missing a link to summarize. " + HELP)
             return
         _do_summarize(parts[1]["url"], printl)
-    elif command == "arxiv":
+    elif command.startswith("arxiv"):
         assert len(parts) == 1
         parts = command.split(" ")
         if len(parts) < 4:
@@ -96,6 +100,15 @@ def handle_app_mention(event, say):
         sub_category = parts[2]
         description = " ".join(parts[3:])
         _arxiv_search(category, sub_category, description, channel=event["channel"])
+    elif command.startswith("reddit"):
+        assert len(parts) == 1
+        parts = command.split(" ")
+        if len(parts) < 3:
+            say("Must include a subreddit name and description. " + HELP)
+            return
+        subreddit_name = parts[1]
+        description = " ".join(parts[2:])
+        _reddit_search(subreddit_name, description, channel=event["channel"])
     else:
         say(f"Unrecognized command `{command}`. " + HELP)
         return
@@ -381,6 +394,63 @@ def _arxiv_search(category, sub_category, description, channel):
     add_line(f"_Checked {total} papers._")
 
     add_line("\n\nEnjoy reading 🎉")
+
+
+def _reddit_search(subreddit_name, description, channel):
+    lines = [f"*/r/{subreddit_name} posts:*"]
+
+    news = app.client.chat_postMessage(text="\n".join(lines), channel=channel)
+    thread = news.data["ts"]
+
+    def add_line(new_line):
+        lines.append(new_line)
+        for _ in range(3):
+            try:
+                app.client.chat_update(
+                    text="\n".join(lines),
+                    channel=channel,
+                    unfurl_links=False,
+                    unfurl_media=False,
+                    ts=thread,
+                )
+                return
+            except SlackApiError:
+                ...
+
+    def set_progress_msg(msg):
+        for _ in range(3):
+            try:
+                app.client.chat_update(
+                    text="\n".join(lines) + "\n\n_" + msg + "_\n",
+                    channel=channel,
+                    unfurl_links=False,
+                    unfurl_media=False,
+                    ts=thread,
+                )
+                return
+            except SlackApiError:
+                ...
+
+    set_progress_msg("Retrieving posts")
+    num = 0
+    total = 0
+    for post in parse_reddit.iter_top_posts(subreddit_name, num_posts=25):
+        set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
+        total += 1
+        try:
+            should_show = lm.matches_filter(
+                post["title"] + "\n\n" + post["content"], description
+            )
+            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
+            print(msg)
+            if should_show:
+                num += 1
+                add_line(msg)
+        except Exception as err:
+            print(err)
+    if num == 0:
+        add_line("_No more relevant posts from today._")
+    add_line(f"_Checked {total} posts._")
 
 
 if __name__ == "__main__":
