@@ -174,7 +174,7 @@ def _do_summarize(url, printl: Callable[[str], None]):
     except requests.exceptions.ReadTimeout as err:
         sections.append(f"My request to {err.request.url} timed out, sorry!")
     except Exception as err:
-        sections.append(f"Sorry I encountered an error: {err}")
+        sections.append(f"Sorry I encountered an error: {type(err)} {err} {repr(err)}")
 
     discussions = []
     if not is_hn_comments:

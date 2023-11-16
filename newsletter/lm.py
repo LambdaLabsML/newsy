@@ -1,9 +1,18 @@
 from langchain.chat_models import ChatOpenAI
+from openai.error import InvalidRequestError
 
 
-def summarize_post(title, content, model="gpt-3.5-turbo-16k"):
-    llm = ChatOpenAI(model=model, request_timeout=10)
-    result = llm.invoke(
+def _call_llm(*args, model="gpt-3.5-turbo-16k", **kwargs):
+    try:
+        return ChatOpenAI(model=model, request_timeout=10).invoke(*args, **kwargs)
+    except InvalidRequestError as err:
+        if err.code == "context_length_exceeded" and "32k" not in model:
+            return _call_llm(*args, model="gpt-4-32k", **kwargs)
+        raise
+
+
+def summarize_post(title, content):
+    result = _call_llm(
         f"""{title}
 
 {content}
@@ -21,9 +30,8 @@ Here is the bulleted list summary:
     return result.content
 
 
-def summarize_abstract(title, content, model="gpt-3.5-turbo-16k"):
-    llm = ChatOpenAI(model=model, request_timeout=10)
-    result = llm.invoke(
+def summarize_abstract(title, content):
+    result = _call_llm(
         f"""{title}
 
 {content}
@@ -48,9 +56,8 @@ Here is the summary:
     return result.content
 
 
-def summarize_comment(title, summary, comment, model="gpt-3.5-turbo-16k"):
-    llm = ChatOpenAI(model=model, request_timeout=10)
-    result = llm.invoke(
+def summarize_comment(title, summary, comment):
+    result = _call_llm(
         f"""**Title**: {title}
 
 **Article Summary**:
@@ -65,9 +72,8 @@ Write an extremely short (less than 5 words; no need for grammatically correct) 
     return result.content
 
 
-def matches_filter(summary, filter, model="gpt-3.5-turbo-16k"):
-    llm = ChatOpenAI(model=model, request_timeout=10)
-    result = llm.invoke(
+def matches_filter(summary, filter):
+    result = _call_llm(
         f"""**Article**: {summary}
 
 We are looking for Articles that match the following **Filter**: {filter}
