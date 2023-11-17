@@ -13,12 +13,13 @@ def _call_llm(*args, model="gpt-3.5-turbo-16k", **kwargs):
 
 def summarize_post(title, content):
     result = _call_llm(
-        f"""{title}
+        f"""[begin Article]
+{title}
 
 {content}
----
+[end Article]
 
-Generate a bulleted list that summarizes the main points from the above article. Prioritize:
+Generate a bulleted list that summarizes the main points from the above Article. Prioritize:
 1. Reducing the mental burden of reading the summary.
 2. Conciseness over grammatical correctness.
 3. Ability for general audience to understand.
@@ -32,12 +33,13 @@ Here is the bulleted list summary:
 
 def summarize_abstract(title, content):
     result = _call_llm(
-        f"""{title}
+        f"""[begin Abstract]
+{title}
 
 {content}
----
+[end Abstract]
 
-Generate a bulleted list that summarizes the above paper abstract.
+Generate a bulleted list that summarizes the above Abstract.
 There should be exactly 3 bullets describing:
 1. The motivation & why its important
 2. The method & how it works
