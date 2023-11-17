@@ -4,11 +4,8 @@ import ssl
 import certifi
 import requests
 from slack_sdk.web import WebClient
-from slack_sdk.errors import SlackApiError
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from datetime import datetime, timedelta
-import time
 
 from newsletter import lm, parse_arxiv, parse_hn, parse_reddit, parse_rss, util
 from newsletter.slack import EditableMessage
@@ -24,10 +21,9 @@ ARTICLE_FILTER = """Articles related to Artificial intelligence (AI), Machine Le
 """
 
 PAPER_FILTER = """Papers related to:
-1. evaluating GPT or large language models
-2. prompting techniques for language models
-3. techniques for optimizing size or efficiency of language models (like quantization or sparsification)
-4. techniques for increasing sequence length of transformers.
+1. Prompting techniques for language models
+2. Techniques for increasing sequence length of transformers.
+3. Techniques for optimizing size or efficiency of language models (like quantization or sparsification)
 """
 
 HELP = """Valid commands are:
