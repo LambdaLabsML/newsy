@@ -46,6 +46,10 @@ HELP = """Valid commands are:
 *`reddit <subreddit name> <description of posts to find>`*
 > Crawls a specific subreddit for *top posts over the last day* that match the descrtiption you give.
 > Example command: `reddit Programming Posts related to security breaches or cyber security.`
+
+*`hackernews <description of posts to find>`*
+> Crawls hackernews for current top stories that match the description you give.
+> Example command: `hackernews Anything to do with world history, human history, ancient civilizations.`
 """
 
 
@@ -110,6 +114,14 @@ def handle_app_mention(event, say):
         subreddit_name = parts[1]
         description = " ".join(parts[2:])
         _reddit_search(subreddit_name, description, channel=event["channel"])
+    elif command.startswith("hackernews"):
+        assert len(parts) == 1
+        parts = command.split(" ")
+        if len(parts) < 2:
+            say("Must include a description. " + HELP)
+            return
+        description = " ".join(parts[1:])
+        _hackernews_search(description, channel=event["channel"])
     else:
         say(f"Unrecognized command `{command}`. " + HELP)
         return
@@ -352,6 +364,31 @@ def _reddit_search(subreddit_name, description, channel):
                 post["title"] + "\n\n" + post["content"], description
             )
             msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
+            print(msg)
+            if should_show:
+                num += 1
+                news.lazy_add_line(msg)
+        except Exception as err:
+            print(err)
+    if num == 0:
+        news.add_line("_No more relevant posts from today._")
+    news.add_line(f"_Checked {total} posts._")
+
+
+def _hackernews_search(description, channel):
+    news = EditableMessage(app.client, channel, f"*HackerNews posts:*")
+    news.set_progress_msg("Retrieving posts")
+    num = 0
+    total = 0
+    for post in parse_hn.iter_top_posts(num_posts=25):
+        news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
+        total += 1
+        try:
+            should_show = lm.matches_filter(
+                post["title"] + "\n\n" + post["content"], description
+            )
+
+            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
             print(msg)
             if should_show:
                 num += 1
