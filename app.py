@@ -118,6 +118,12 @@ def handle_app_mention(event):
             return
         description = " ".join(parts[1:])
         _hackernews_search(description, channel=event["channel"])
+    elif "thread_ts" in event:
+        # this is probably a question in a summary thread
+        conversation = app.client.conversations_replies(
+            channel=event["channel"], ts=event["thread_ts"]
+        )
+        _do_interactive(conversation["messages"], printl)
     else:
         printl(f"Unrecognized command `{command}`. " + HELP)
         return
@@ -217,6 +223,8 @@ def _do_summarize(url, printl: Callable[[str], None]):
         sections.append(
             f"You can search for tweets discussing this url on *<https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>*"
         )
+
+    sections.append("_Tag me with a question if you have any related to the article!_")
 
     printl("\n\n".join(sections))
 
@@ -394,6 +402,48 @@ def _hackernews_search(description, channel):
     if num == 0:
         news.add_line("_No more relevant posts from today._")
     news.add_line(f"_Checked {total} posts._")
+
+
+def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
+    from langchain.chat_models import ChatOpenAI
+    from langchain.schema import HumanMessage, SystemMessage, AIMessage
+
+    chat = ChatOpenAI(model=model, request_timeout=10)
+    app_user_id = app.client.auth_test()["user_id"]
+
+    # TODO add a SystemMessage?
+    messages = []
+    for event in conversation:
+        if event["user"] == app_user_id:
+            messages.append(AIMessage(content=event["text"]))
+        else:
+            messages.append(HumanMessage(content=event["text"]))
+
+            # check for any external links present in this message.
+            for ele in event["blocks"][0]["elements"][0]["elements"]:
+                if ele["type"] != "link":
+                    continue
+                url = ele["url"]
+
+                if "twitter.com" in url:
+                    # raise util.ScrapePreventedError()
+                    ...
+                elif "reddit.com" in url and "comments" in url:
+                    item = parse_reddit.get_item(url)
+                    msg = f"[begin Article]\n{item['title']}\n\n{item['content']}\n[end Article]"
+                elif "news.ycombinator.com/item" in url:
+                    item = parse_hn.get_item(url)
+                    msg = f"[begin Article]\n{item['title']}\n\n{item['content']}\n[end Article]"
+                elif "arxiv.org" in url:
+                    item = parse_arxiv.get_item(url)
+                    msg = f"[begin Abstract]\n{item['title']}\n\n{item['abstract']}\n[end Abstract]"
+                else:
+                    item = util.get_details_from_url(url)
+                    msg = f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"
+                messages.append(SystemMessage(content=msg))
+
+    response = chat(messages)
+    printl(response.content)
 
 
 if __name__ == "__main__":
