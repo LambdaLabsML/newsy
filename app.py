@@ -51,7 +51,7 @@ HELP = """Valid commands are:
 
 @app.event("message")
 @app.event("app_mention")
-def handle_app_mention(event, say):
+def handle_app_mention(event):
     def printl(msg):
         app.client.chat_postMessage(
             text=msg,
@@ -79,7 +79,7 @@ def handle_app_mention(event, say):
         parts = [p for p in parts if p["type"] != "user"]
 
     if parts[0]["type"] != "text":
-        say(f"Unrecognized command `{parts[0]}`. " + HELP)
+        printl(f"Unrecognized command `{parts[0]}`. " + HELP)
         return
 
     command = parts[0]["text"].strip()
@@ -88,14 +88,14 @@ def handle_app_mention(event, say):
         _do_news(channel=event["channel"])
     elif command == "summarize":
         if len(parts) != 2 or parts[1]["type"] != "link":
-            say("Missing a link to summarize. " + HELP)
+            printl("Missing a link to summarize. " + HELP)
             return
         _do_summarize(parts[1]["url"], printl)
     elif command.startswith("arxiv"):
         assert len(parts) == 1
         parts = command.split(" ")
         if len(parts) < 4:
-            say("Must include a arxiv category and description. " + HELP)
+            printl("Must include a arxiv category and description. " + HELP)
             return
         category = parts[1]
         sub_category = parts[2]
@@ -105,7 +105,7 @@ def handle_app_mention(event, say):
         assert len(parts) == 1
         parts = command.split(" ")
         if len(parts) < 3:
-            say("Must include a subreddit name and description. " + HELP)
+            printl("Must include a subreddit name and description. " + HELP)
             return
         subreddit_name = parts[1]
         description = " ".join(parts[2:])
@@ -114,12 +114,12 @@ def handle_app_mention(event, say):
         assert len(parts) == 1
         parts = command.split(" ")
         if len(parts) < 2:
-            say("Must include a description. " + HELP)
+            printl("Must include a description. " + HELP)
             return
         description = " ".join(parts[1:])
         _hackernews_search(description, channel=event["channel"])
     else:
-        say(f"Unrecognized command `{command}`. " + HELP)
+        printl(f"Unrecognized command `{command}`. " + HELP)
         return
 
 
