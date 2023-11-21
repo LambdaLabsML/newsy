@@ -129,9 +129,12 @@ def handle_app_mention(event):
         return
 
 
-def _do_summarize(url, printl: Callable[[str], None]):
+def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k"):
     sections = []
 
+    content = (
+        "Unable to access Article - no questions can be answered nor summary provided."
+    )
     try:
         is_twitter_post = "twitter.com" in url
         is_reddit_comments = "reddit.com" in url and "comments" in url
@@ -145,6 +148,9 @@ def _do_summarize(url, printl: Callable[[str], None]):
             else:
                 item = parse_hn.get_item(url)
 
+            content = (
+                f"[begin Article]\n{item['title']}\n\n{item['content']}\n[end Article]"
+            )
             summary = lm.summarize_post(item["title"], item["content"])
 
             lines = [
@@ -171,6 +177,9 @@ def _do_summarize(url, printl: Callable[[str], None]):
         elif "arxiv.org" in url:
             # arxiv abstract
             item = parse_arxiv.get_item(url)
+            content = (
+                f"[begin Article]\n{item['title']}\n\n{item['abstract']}\n[end Article]"
+            )
             summary = lm.summarize_abstract(item["title"], item["abstract"])
             sections.append(
                 f"The abstract for *<{url}|{item['title']}>* discusses:\n{summary}"
@@ -178,6 +187,9 @@ def _do_summarize(url, printl: Callable[[str], None]):
         else:
             # generic web page
             item = util.get_details_from_url(url)
+            content = (
+                f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"
+            )
             summary = lm.summarize_post(item["title"], item["text"])
             sections.append(f"*<{url}|{item['title']}>* discusses:\n{summary}")
     except requests.exceptions.HTTPError as err:
@@ -224,9 +236,26 @@ def _do_summarize(url, printl: Callable[[str], None]):
             f"You can search for tweets discussing this url on *<https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>*"
         )
 
-    sections.append("_Tag me with a question if you have any related to the article!_")
+    summary = "\n\n".join(sections)
+    printl(summary)
 
-    printl("\n\n".join(sections))
+    from langchain.chat_models import ChatOpenAI
+    from langchain.schema import HumanMessage, AIMessage, SystemMessage
+
+    chat = ChatOpenAI(model=model, request_timeout=10)
+    response = chat(
+        [
+            SystemMessage(content=content),
+            AIMessage(content=summary),
+            HumanMessage(
+                content="Suggest 5 follow up questions to learn more about this post. The questions should be answerable based on the content in the article."
+            ),
+        ]
+    )
+    printl(
+        "Here are some follow up questions to help you dive deeper into this post (tag me and and I can answer them!):\n"
+        + response.content
+    )
 
 
 def _do_news(channel):
@@ -436,7 +465,7 @@ def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
                     msg = f"[begin Article]\n{item['title']}\n\n{item['content']}\n[end Article]"
                 elif "arxiv.org" in url:
                     item = parse_arxiv.get_item(url)
-                    msg = f"[begin Abstract]\n{item['title']}\n\n{item['abstract']}\n[end Abstract]"
+                    msg = f"[begin Article]\n{item['title']}\n\n{item['abstract']}\n[end Article]"
                 else:
                     item = util.get_details_from_url(url)
                     msg = f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"
