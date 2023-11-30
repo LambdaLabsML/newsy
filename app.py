@@ -1,4 +1,5 @@
 from typing import Callable
+from copy import deepcopy
 import os
 import ssl
 import certifi
@@ -7,7 +8,15 @@ from slack_sdk.web import WebClient
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from newsletter import lm, parse_arxiv, parse_hn, parse_reddit, parse_rss, util
+from newsletter import (
+    lm,
+    parse_arxiv,
+    parse_hn,
+    parse_reddit,
+    parse_rss,
+    util,
+    parse_pdf,
+)
 from newsletter.slack import EditableMessage
 
 app = App(
@@ -444,7 +453,7 @@ def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
     chat = ChatOpenAI(model=model, request_timeout=10)
     app_user_id = app.client.auth_test()["user_id"]
 
-    # TODO add a SystemMessage?
+    arxiv_urls = {}
     messages = []
     for event in conversation:
         if event["user"] == app_user_id:
@@ -470,10 +479,43 @@ def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
                 elif "arxiv.org" in url:
                     item = parse_arxiv.get_item(url)
                     msg = f"[begin Article]\n{item['title']}\n\n{item['abstract']}\n[end Article]"
+                    arxiv_urls[url] = len(messages)
                 else:
                     item = util.get_details_from_url(url)
                     msg = f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"
                 messages.append(SystemMessage(content=msg))
+
+    additional_content = {}
+    for url in arxiv_urls:
+        pdf = parse_pdf.ParsedPdf(parse_arxiv.download_pdf(url))
+        new_content = []
+        for section in pdf.section_names:
+            messages.append(
+                SystemMessage(
+                    content=f"""[begin section '{section}']\n{pdf.get_section(section)}\n[end section '{section}']
+Extract information from section '{section}' above that is relevant to the question:
+
+[begin question]
+{conversation[-1]['text']}
+[end question]
+
+If section '{section}' does NOT contain ANY information relevant to the question output the string 'None', otherwise output the relevant information in a concise paragraph."""
+                )
+            )
+            try:
+                extraction = chat(messages).content
+                print(section, "|", extraction)
+                if not extraction.lower().startswith("none"):
+                    new_content.append(
+                        f"[begin section '{section}']\n{extraction}\n[end section '{section}']"
+                    )
+            except Exception as err:
+                print(err)
+            messages.pop()
+        additional_content[url] = "\n\n".join(new_content)
+
+    for url, i_msg in arxiv_urls.items():
+        messages[i_msg].content += "\n" + additional_content[url]
 
     try:
         response = chat(messages)

@@ -1,5 +1,6 @@
 import arxiv
 from datetime import datetime, timedelta
+import os
 
 
 def get_item(url: str):
@@ -18,6 +19,20 @@ def get_item(url: str):
         "category": item.primary_category,
         "pdf_url": item.pdf_url,
     }
+
+
+def download_pdf(url: str, dir: str = "/tmp"):
+    assert "arxiv.org" in url
+
+    client = arxiv.Client()
+    search = arxiv.Search(id_list=[url.split("/")[-1].replace(".pdf", "")])
+    item = next(client.results(search))
+    filename = item._get_default_filename()
+    full_path = os.path.join(dir, filename)
+    if not os.path.exists(full_path):
+        path = item.download_pdf(dirpath=dir, filename=filename)
+        assert path == full_path
+    return full_path
 
 
 def iter_todays_papers(category: str):
