@@ -243,19 +243,23 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
     from langchain.schema import HumanMessage, AIMessage, SystemMessage
 
     chat = ChatOpenAI(model=model, request_timeout=10)
-    response = chat(
-        [
-            SystemMessage(content=content),
-            AIMessage(content=summary),
-            HumanMessage(
-                content="Suggest 5 follow up questions to learn more about this post. The questions should be answerable based on the content in the article."
-            ),
-        ]
-    )
-    printl(
-        "Here are some follow up questions to help you dive deeper into this post (tag me and and I can answer them!):\n"
-        + response.content
-    )
+
+    try:
+        response = chat(
+            [
+                SystemMessage(content=content),
+                AIMessage(content=summary),
+                HumanMessage(
+                    content="Suggest 5 follow up questions to learn more about this post. The questions should be answerable based on the content in the article."
+                ),
+            ]
+        )
+        printl(
+            "Here are some follow up questions to help you dive deeper into this post (tag me and and I can answer them!):\n"
+            + response.content
+        )
+    except Exception as err:
+        printl(f"Sorry I encountered an error: {type(err)} {err} {repr(err)}")
 
 
 def _do_news(channel):
@@ -471,8 +475,11 @@ def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
                     msg = f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"
                 messages.append(SystemMessage(content=msg))
 
-    response = chat(messages)
-    printl(response.content)
+    try:
+        response = chat(messages)
+        printl(response.content)
+    except Exception as err:
+        printl(f"Sorry I encountered an error: {type(err)} {err} {repr(err)}")
 
 
 if __name__ == "__main__":
