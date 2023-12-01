@@ -41,6 +41,7 @@ class ParsedPdf:
         self._section_end_pages = []
         for i in range(len(self._section_start_pages) - 1):
             self._section_end_pages.append(self._section_start_pages[i + 1])
+        self._section_end_pages.append(self.num_pages)
 
         # Deleting anything up to abstract
         i_abstract = None
