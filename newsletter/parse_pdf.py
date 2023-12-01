@@ -26,12 +26,13 @@ class ParsedPdf:
         for i_page, page in enumerate(extract_pages(os.path.expanduser(path))):
             for paragraph in page:
                 if isinstance(paragraph, LTTextContainer):
+                    font_size = _get_font_size(paragraph)
                     if "Introduction" in paragraph.get_text():
-                        header_font_size = _get_font_size(paragraph)
+                        header_font_size = font_size
 
                     if (
                         header_font_size is not None
-                        and _get_font_size(paragraph) == header_font_size
+                        and abs(font_size - header_font_size) < 1e-3
                     ):
                         self.section_names.append(paragraph.get_text().strip())
                         self._section_start_pages.append(i_page)
