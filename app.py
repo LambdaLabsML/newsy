@@ -1,5 +1,5 @@
+import json
 from typing import Callable
-from copy import deepcopy
 import os
 import ssl
 import certifi
@@ -132,7 +132,15 @@ def handle_app_mention(event):
         conversation = app.client.conversations_replies(
             channel=event["channel"], ts=event["thread_ts"]
         )
-        _do_interactive(conversation["messages"], printl)
+        _do_interactive(
+            conversation["messages"],
+            EditableMessage(
+                app.client,
+                event["channel"],
+                "_Let me check..._",
+                ts=event["thread_ts"],
+            ),
+        )
     else:
         printl(f"Unrecognized command `{command}`. " + HELP)
         return
@@ -210,7 +218,7 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
     except requests.exceptions.ReadTimeout as err:
         sections.append(f"My request to {err.request.url} timed out, sorry!")
     except Exception as err:
-        sections.append(f"Sorry I encountered an error: {type(err)} {err} {repr(err)}")
+        sections.append(f"Sorry I encountered an error: {type(err)} {repr(err)}")
 
     discussions = []
     if not is_hn_comments:
@@ -268,7 +276,7 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
             + response.content
         )
     except Exception as err:
-        printl(f"Sorry I encountered an error: {type(err)} {err} {repr(err)}")
+        printl(f"Sorry I encountered an error: {type(err)} {repr(err)}")
 
 
 def _do_news(channel):
@@ -446,7 +454,9 @@ def _hackernews_search(description, channel):
     news.add_line(f"_Checked {total} posts._")
 
 
-def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
+def _do_interactive(
+    conversation, slack_msg: EditableMessage, model="gpt-3.5-turbo-16k"
+):
     from langchain.chat_models import ChatOpenAI
     from langchain.schema import HumanMessage, SystemMessage, AIMessage
 
@@ -466,6 +476,8 @@ def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
                 if ele["type"] != "link":
                     continue
                 url = ele["url"]
+
+                slack_msg.edit_line(f"_Scraping <{url}>..._")
 
                 if "twitter.com" in url:
                     # raise util.ScrapePreventedError()
@@ -487,27 +499,37 @@ def _do_interactive(conversation, printl, model="gpt-3.5-turbo-16k"):
 
     additional_content = {}
     for url in arxiv_urls:
-        pdf = parse_pdf.ParsedPdf(parse_arxiv.download_pdf(url))
+        slack_msg.edit_line(f"_Downloading <{url}>..._")
+        path = parse_arxiv.download_pdf(url)
+
+        slack_msg.edit_line(f"_Parsing pdf..._")
+        pdf = parse_pdf.ParsedPdf(path)
+
         new_content = []
         for section in pdf.section_names:
+            slack_msg.edit_line(f"_Reading section '{section}'..._")
             messages.append(
                 SystemMessage(
-                    content=f"""[begin section '{section}']\n{pdf.get_section(section)}\n[end section '{section}']
-Extract information from section '{section}' above that is relevant to the question:
+                    content=f"""[begin Section '{section}']
+{pdf.get_section(section)}
+[end Section '{section}']
 
-[begin question]
+[begin Question]
 {conversation[-1]['text']}
-[end question]
+[end Question]
 
-If section '{section}' does NOT contain ANY information relevant to the question output the string 'None', otherwise output the relevant information in a concise paragraph."""
+Extract information from Section '{section}' that is relevant to the Question. The output should be a JSON dictionary with two keys. The first key should be the summary, and the second key should be a boolean value indicating whether there is useful information in the section. Here is an example output:
+{{"summary": "<example summary text...>", "relevant": false}}
+"""
                 )
             )
             try:
                 extraction = chat(messages).content
+                extraction = json.loads(extraction)
                 print(section, "|", extraction)
-                if not extraction.lower().startswith("none"):
+                if extraction["relevant"]:
                     new_content.append(
-                        f"[begin section '{section}']\n{extraction}\n[end section '{section}']"
+                        f"[begin Section '{section}']\n{extraction['summary']}\n[end Section '{section}']"
                     )
             except Exception as err:
                 print(err)
@@ -518,10 +540,11 @@ If section '{section}' does NOT contain ANY information relevant to the question
         messages[i_msg].content += "\n" + additional_content[url]
 
     try:
+        slack_msg.edit_line("_Thinking..._")
         response = chat(messages)
-        printl(response.content)
+        slack_msg.edit_line(response.content)
     except Exception as err:
-        printl(f"Sorry I encountered an error: {type(err)} {err} {repr(err)}")
+        slack_msg.edit_line(f"Sorry I encountered an error: {type(err)} {repr(err)}")
 
 
 if __name__ == "__main__":

@@ -44,13 +44,13 @@ class SlackChannel:
 
 
 class EditableMessage:
-    def __init__(self, client: WebClient, channel: str, msg: str):
+    def __init__(self, client: WebClient, channel: str, msg: str, ts=None):
         self.client = client
         self.channel = channel
         self.blocks = []
         self.lines = [msg]
         news = self.client.chat_postMessage(
-            text="\n".join(self.lines), channel=self.channel
+            text="\n".join(self.lines), channel=self.channel, thread_ts=ts
         )
         self.thread = news.data["ts"]
 
@@ -61,35 +61,33 @@ class EditableMessage:
     def lazy_add_line(self, new_line):
         self.lines.append(new_line)
 
+    def edit_line(self, new_line):
+        self.lines[-1] = new_line
+        self._update("\n".join(self.lines))
+
     def add_line(self, new_line):
         if len("\n".join(self.lines)) + 1 + len(new_line) >= 3000:
             self.start_new_section()
         self.lines.append(new_line)
-        for _ in range(3):
-            try:
-                self.client.chat_update(
-                    text="More news for you!",
-                    blocks=self.blocks + [SectionBlock(text="\n".join(self.lines))],
-                    channel=self.channel,
-                    unfurl_links=False,
-                    unfurl_media=False,
-                    ts=self.thread,
-                )
-                return
-            except SlackApiError:
-                ...
+        self._update("\n".join(self.lines))
 
     def set_progress_msg(self, msg):
         if len("\n".join(self.lines)) + 5 + len(msg) >= 3000:
             self.start_new_section()
+        self._update("\n".join(self.lines) + "\n\n_" + msg + "_\n")
+
+    def _update(self, content):
+        if len(self.blocks) == 0:
+            blocks = None
+            text = content
+        else:
+            blocks = self.blocks + [SectionBlock(text=content)]
+            text = "More news for you!"
         for _ in range(3):
             try:
                 self.client.chat_update(
-                    text="More news for you!",
-                    blocks=self.blocks
-                    + [
-                        SectionBlock(text="\n".join(self.lines) + "\n\n_" + msg + "_\n")
-                    ],
+                    text=text,
+                    blocks=blocks,
                     channel=self.channel,
                     unfurl_links=False,
                     unfurl_media=False,
