@@ -99,7 +99,16 @@ def handle_app_mention(event):
         if len(parts) != 2 or parts[1]["type"] != "link":
             printl("Missing a link to summarize. " + HELP)
             return
-        _do_summarize(parts[1]["url"], printl)
+        _do_summarize(
+            parts[1]["url"],
+            EditableMessage(
+                app.client,
+                event["channel"],
+                "_Working on it..._",
+                ts=event["event_ts"],
+            ),
+            printl,
+        )
     elif command.startswith("arxiv"):
         assert len(parts) == 1
         parts = command.split(" ")
@@ -146,7 +155,12 @@ def handle_app_mention(event):
         return
 
 
-def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k"):
+def _do_summarize(
+    url,
+    slack_msg: EditableMessage,
+    printl: Callable[[str], None],
+    model="gpt-3.5-turbo-16k",
+):
     sections = []
 
     content = (
@@ -159,7 +173,7 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
         if is_twitter_post:
             raise util.ScrapePreventedError()
         elif is_reddit_comments or is_hn_comments:
-            # reddit post comments or hackernews comments
+            slack_msg.edit_line(f"_Scraping <{url}>..._")
             if "reddit.com" in url:
                 item = parse_reddit.get_item(url)
             else:
@@ -168,6 +182,8 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
             content = (
                 f"[begin Article]\n{item['title']}\n\n{item['content']}\n[end Article]"
             )
+
+            slack_msg.edit_line(f"_Summarizing content..._")
             summary = lm.summarize_post(item["title"], item["content"])
 
             lines = [
@@ -181,6 +197,7 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
             else:
                 lines[-1] += " centered around:"
                 for i, c in enumerate(item["comments"]):
+                    slack_msg.edit_line(f"_Summarizing comment {i + 1}..._")
                     comment_summary = lm.summarize_comment(
                         item["title"], summary, c["content"]
                     )
@@ -193,20 +210,24 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
             sections.append("\n".join(lines))
         elif "arxiv.org" in url:
             # arxiv abstract
+            slack_msg.edit_line(f"_Scraping <{url}>..._")
             item = parse_arxiv.get_item(url)
             content = (
                 f"[begin Article]\n{item['title']}\n\n{item['abstract']}\n[end Article]"
             )
+            slack_msg.edit_line(f"_Summarizing abstract..._")
             summary = lm.summarize_abstract(item["title"], item["abstract"])
             sections.append(
                 f"The abstract for *<{url}|{item['title']}>* discusses:\n{summary}"
             )
         else:
             # generic web page
+            slack_msg.edit_line(f"_Scraping <{url}>..._")
             item = util.get_details_from_url(url)
             content = (
                 f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"
             )
+            slack_msg.edit_line(f"_Summarizing content..._")
             summary = lm.summarize_post(item["title"], item["text"])
             sections.append(f"*<{url}|{item['title']}>* discusses:\n{summary}")
     except requests.exceptions.HTTPError as err:
@@ -222,8 +243,10 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
 
     discussions = []
     if not is_hn_comments:
+        slack_msg.edit_line("_Searching for hackernews posts..._")
         discussions.append(("HackerNews", parse_hn.search_for_url(url)))
     if not is_reddit_comments:
+        slack_msg.edit_line("_Searching for reddit posts..._")
         discussions.append(("reddit", parse_reddit.search_for_url(url)))
 
     for name, discussion in discussions:
@@ -238,6 +261,7 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
         else:
             lines[0] += " centered around:"
             for i, c in enumerate(discussion["comments"]):
+                slack_msg.edit_line(f"_Summarizing comment {i + 1} on {name}..._")
                 comment_summary = lm.summarize_comment(
                     discussion["title"], summary, c["content"]
                 )
@@ -254,12 +278,12 @@ def _do_summarize(url, printl: Callable[[str], None], model="gpt-3.5-turbo-16k")
         )
 
     summary = "\n\n".join(sections)
-    printl(summary)
+    slack_msg.edit_line(summary)
 
     from langchain.chat_models import ChatOpenAI
     from langchain.schema import HumanMessage, AIMessage, SystemMessage
 
-    chat = ChatOpenAI(model=model, request_timeout=10)
+    chat = ChatOpenAI(model=model, request_timeout=30)
 
     try:
         response = chat(
@@ -460,7 +484,7 @@ def _do_interactive(
     from langchain.chat_models import ChatOpenAI
     from langchain.schema import HumanMessage, SystemMessage, AIMessage
 
-    chat = ChatOpenAI(model=model, request_timeout=10)
+    chat = ChatOpenAI(model=model, request_timeout=30)
     app_user_id = app.client.auth_test()["user_id"]
 
     arxiv_urls = {}

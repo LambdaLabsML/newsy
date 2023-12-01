@@ -4,7 +4,7 @@ from openai.error import InvalidRequestError
 
 def _call_llm(*args, model="gpt-3.5-turbo-16k", **kwargs):
     try:
-        return ChatOpenAI(model=model, request_timeout=10).invoke(*args, **kwargs)
+        return ChatOpenAI(model=model, request_timeout=30).invoke(*args, **kwargs)
     except InvalidRequestError as err:
         if err.code == "context_length_exceeded" and "32k" not in model:
             return _call_llm(*args, model="gpt-4-32k", **kwargs)
