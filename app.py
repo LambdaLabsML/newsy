@@ -87,6 +87,19 @@ def handle_app_mention(event):
     if event["type"] == "app_mention":
         parts = [p for p in parts if p["type"] != "user"]
 
+    if parts[0]["type"] == "link":
+        _do_summarize(
+            parts[0]["url"],
+            EditableMessage(
+                app.client,
+                event["channel"],
+                "_Working on it..._",
+                ts=event["event_ts"],
+            ),
+            printl,
+        )
+        return
+
     if parts[0]["type"] != "text":
         printl(f"Unrecognized command `{parts[0]}`. " + HELP)
         return
@@ -95,7 +108,7 @@ def handle_app_mention(event):
 
     if command == "news":
         _do_news(channel=event["channel"])
-    elif command == "summarize":
+    elif "summarize" in command or "summary" in command or "explain" in command:
         if len(parts) != 2 or parts[1]["type"] != "link":
             printl("Missing a link to summarize. " + HELP)
             return
@@ -136,23 +149,22 @@ def handle_app_mention(event):
             return
         description = " ".join(parts[1:])
         _hackernews_search(description, channel=event["channel"])
-    elif "thread_ts" in event:
+    else:
+        if "thread_ts" in event:
+            ts = event["thread_ts"]
+        else:
+            ts = event["event_ts"]
         # this is probably a question in a summary thread
-        conversation = app.client.conversations_replies(
-            channel=event["channel"], ts=event["thread_ts"]
-        )
+        conversation = app.client.conversations_replies(channel=event["channel"], ts=ts)
         _do_interactive(
             conversation["messages"],
             EditableMessage(
                 app.client,
                 event["channel"],
                 "_Let me check..._",
-                ts=event["thread_ts"],
+                ts=ts,
             ),
         )
-    else:
-        printl(f"Unrecognized command `{command}`. " + HELP)
-        return
 
 
 def _do_summarize(
