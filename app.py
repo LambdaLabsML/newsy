@@ -14,6 +14,7 @@ from newsletter import (
     parse_hn,
     parse_reddit,
     parse_rss,
+    parse_youtube,
     util,
     parse_pdf,
 )
@@ -232,6 +233,15 @@ def _do_summarize(
             sections.append(
                 f"The abstract for *<{url}|{item['title']}>* discusses:\n{summary}"
             )
+        elif "youtube.com" in url:
+            slack_msg.edit_line(f"_Scraping <{url}>..._")
+            item = parse_youtube.get_item(url)
+            content = (
+                f"[begin Article]\n{item['title']}\n\n{item['content']}\n[end Article]"
+            )
+            slack_msg.edit_line(f"_Summarizing video..._")
+            summary = lm.summarize_post(item["title"], item["content"])
+            sections.append(f"*<{url}|{item['title']}>* discusses:\n{summary}")
         else:
             # generic web page
             slack_msg.edit_line(f"_Scraping <{url}>..._")
@@ -528,6 +538,9 @@ def _do_interactive(
                     item = parse_arxiv.get_item(url)
                     msg = f"[begin Article]\n{item['title']}\n\n{item['abstract']}\n[end Article]"
                     arxiv_urls[url] = len(messages)
+                elif "youtube.com" in url:
+                    item = parse_youtube.get_item(url)
+                    msg = f"[begin Article]\n{item['title']}\n\n{item['content']}\n[end Article]"
                 else:
                     item = util.get_details_from_url(url)
                     msg = f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"

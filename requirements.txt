@@ -9,3 +9,4 @@ slack-bolt==1.18.0
 lxml
 langchain
 pdfminer.six==20221105
+youtube-transcript-api==0.6.1
