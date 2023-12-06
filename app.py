@@ -88,84 +88,89 @@ def handle_app_mention(event):
     if event["type"] == "app_mention":
         parts = [p for p in parts if p["type"] != "user"]
 
-    if parts[0]["type"] == "link":
-        _do_summarize(
-            parts[0]["url"],
-            EditableMessage(
-                app.client,
-                event["channel"],
-                "_Working on it..._",
-                ts=event["event_ts"],
-            ),
-            printl,
-        )
-        return
+    try:
+        if parts[0]["type"] == "link":
+            _do_summarize(
+                parts[0]["url"],
+                EditableMessage(
+                    app.client,
+                    event["channel"],
+                    "_Working on it..._",
+                    ts=event["event_ts"],
+                ),
+                printl,
+            )
+            return
 
-    if parts[0]["type"] != "text":
-        printl(f"Unrecognized command `{parts[0]}`. " + HELP)
-        return
+        if parts[0]["type"] != "text":
+            printl(f"Unrecognized command `{parts[0]}`. " + HELP)
+            return
 
-    command = parts[0]["text"].strip()
+        command = parts[0]["text"].strip()
 
-    if command == "news":
-        _do_news(channel=event["channel"])
-    elif "summarize" in command or "summary" in command or "explain" in command:
-        if len(parts) != 2 or parts[1]["type"] != "link":
-            printl("Missing a link to summarize. " + HELP)
-            return
-        _do_summarize(
-            parts[1]["url"],
-            EditableMessage(
-                app.client,
-                event["channel"],
-                "_Working on it..._",
-                ts=event["event_ts"],
-            ),
-            printl,
-        )
-    elif command.startswith("arxiv"):
-        assert len(parts) == 1
-        parts = command.split(" ")
-        if len(parts) < 4:
-            printl("Must include a arxiv category and description. " + HELP)
-            return
-        category = parts[1]
-        sub_category = parts[2]
-        description = " ".join(parts[3:])
-        _arxiv_search(category, sub_category, description, channel=event["channel"])
-    elif command.startswith("reddit"):
-        assert len(parts) == 1
-        parts = command.split(" ")
-        if len(parts) < 3:
-            printl("Must include a subreddit name and description. " + HELP)
-            return
-        subreddit_name = parts[1]
-        description = " ".join(parts[2:])
-        _reddit_search(subreddit_name, description, channel=event["channel"])
-    elif command.startswith("hackernews"):
-        assert len(parts) == 1
-        parts = command.split(" ")
-        if len(parts) < 2:
-            printl("Must include a description. " + HELP)
-            return
-        description = " ".join(parts[1:])
-        _hackernews_search(description, channel=event["channel"])
-    else:
-        if "thread_ts" in event:
-            ts = event["thread_ts"]
+        if command == "news":
+            _do_news(channel=event["channel"])
+        elif "summarize" in command or "summary" in command or "explain" in command:
+            if len(parts) != 2 or parts[1]["type"] != "link":
+                printl("Missing a link to summarize. " + HELP)
+                return
+            _do_summarize(
+                parts[1]["url"],
+                EditableMessage(
+                    app.client,
+                    event["channel"],
+                    "_Working on it..._",
+                    ts=event["event_ts"],
+                ),
+                printl,
+            )
+        elif command.startswith("arxiv"):
+            assert len(parts) == 1
+            parts = command.split(" ")
+            if len(parts) < 4:
+                printl("Must include a arxiv category and description. " + HELP)
+                return
+            category = parts[1]
+            sub_category = parts[2]
+            description = " ".join(parts[3:])
+            _arxiv_search(category, sub_category, description, channel=event["channel"])
+        elif command.startswith("reddit"):
+            assert len(parts) == 1
+            parts = command.split(" ")
+            if len(parts) < 3:
+                printl("Must include a subreddit name and description. " + HELP)
+                return
+            subreddit_name = parts[1]
+            description = " ".join(parts[2:])
+            _reddit_search(subreddit_name, description, channel=event["channel"])
+        elif command.startswith("hackernews"):
+            assert len(parts) == 1
+            parts = command.split(" ")
+            if len(parts) < 2:
+                printl("Must include a description. " + HELP)
+                return
+            description = " ".join(parts[1:])
+            _hackernews_search(description, channel=event["channel"])
         else:
-            ts = event["event_ts"]
-        # this is probably a question in a summary thread
-        conversation = app.client.conversations_replies(channel=event["channel"], ts=ts)
-        _do_interactive(
-            conversation["messages"],
-            EditableMessage(
-                app.client,
-                event["channel"],
-                "_Let me check..._",
-                ts=ts,
-            ),
-        )
+            if "thread_ts" in event:
+                ts = event["thread_ts"]
+            else:
+                ts = event["event_ts"]
+            # this is probably a question in a summary thread
+            conversation = app.client.conversations_replies(
+                channel=event["channel"], ts=ts
+            )
+            _do_interactive(
+                conversation["messages"],
+                EditableMessage(
+                    app.client,
+                    event["channel"],
+                    "_Let me check..._",
+                    ts=ts,
+                ),
+            )
+    except Exception as err:
+        printl(f"Sorry I encountered an error: {type(err)} {repr(err)}")
 
 
 def _do_summarize(
