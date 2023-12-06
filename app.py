@@ -110,7 +110,9 @@ def handle_app_mention(event):
 
         if command == "news":
             _do_news(channel=event["channel"])
-        elif "summarize" in command or "summary" in command or "explain" in command:
+        elif (
+            "summarize" in command or "summary" in command or "explain" in command
+        ) and any(p["type"] == "link" for p in parts):
             if len(parts) != 2 or parts[1]["type"] != "link":
                 printl("Missing a link to summarize. " + HELP)
                 return
