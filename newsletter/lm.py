@@ -60,15 +60,17 @@ Here is the summary:
 
 def summarize_comment(title: str, summary: str, comment: str) -> str:
     result = _call_llm(
-        f"""**Title**: {title}
+        f"""[begin Article]
+{title}
 
-**Article Summary**:
 {summary}
+[end Article]
 
-**Comment**:
+[begin Comment]
 {comment}
+[end Comment]
 
-Write an extremely short (less than 5 words; no need for grammatically correct) info bite summarizing the comment:
+Write an extremely short (less than 5 words; no need for grammatically correct) info bite summarizing the Comment:
 """
     )
     return result.content
@@ -76,9 +78,14 @@ Write an extremely short (less than 5 words; no need for grammatically correct) 
 
 def matches_filter(content: str, filter: str) -> bool:
     result = _call_llm(
-        f"""**Article**: {content}
+        f"""[begin Article]
+{content}
+[end Article]
 
-We are looking for Articles that match the following **Filter**: {filter}
+We are looking for Articles that match the following Filter
+[begin Filter]
+{filter}
+[end Filter]
 
 Does the above Article match the above Filter? The Answer should be Yes or No:
 **Answer**:
