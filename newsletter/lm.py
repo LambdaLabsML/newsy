@@ -11,7 +11,7 @@ def _call_llm(*args, model="gpt-3.5-turbo-16k", **kwargs):
         raise
 
 
-def summarize_post(title, content):
+def summarize_post(title: str, content: str) -> str:
     result = _call_llm(
         f"""[begin Article]
 {title}
@@ -31,7 +31,7 @@ Here is the bulleted list summary:
     return result.content
 
 
-def summarize_abstract(title, content):
+def summarize_abstract(title: str, content: str) -> str:
     result = _call_llm(
         f"""[begin Abstract]
 {title}
@@ -58,7 +58,7 @@ Here is the summary:
     return result.content
 
 
-def summarize_comment(title, summary, comment):
+def summarize_comment(title: str, summary: str, comment: str) -> str:
     result = _call_llm(
         f"""**Title**: {title}
 
@@ -74,9 +74,9 @@ Write an extremely short (less than 5 words; no need for grammatically correct) 
     return result.content
 
 
-def matches_filter(summary, filter):
+def matches_filter(content: str, filter: str) -> bool:
     result = _call_llm(
-        f"""**Article**: {summary}
+        f"""**Article**: {content}
 
 We are looking for Articles that match the following **Filter**: {filter}
 

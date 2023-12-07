@@ -314,22 +314,19 @@ def _do_summarize(
 
     chat = ChatOpenAI(model=model, request_timeout=30)
 
-    try:
-        response = chat(
-            [
-                SystemMessage(content=content),
-                AIMessage(content=summary),
-                HumanMessage(
-                    content="Suggest 5 follow up questions to learn more about this post. The questions should be answerable based on the content in the article."
-                ),
-            ]
-        )
-        printl(
-            "Here are some follow up questions to help you dive deeper into this post (tag me and and I can answer them!):\n"
-            + response.content
-        )
-    except Exception as err:
-        printl(f"Sorry I encountered an error: {type(err)} {repr(err)}")
+    response = chat(
+        [
+            SystemMessage(content=content),
+            AIMessage(content=summary),
+            HumanMessage(
+                content="Suggest 5 follow up questions to learn more about this post. The questions should be answerable based on the content in the article."
+            ),
+        ]
+    )
+    printl(
+        "Here are some follow up questions to help you dive deeper into this post (tag me and and I can answer them!):\n"
+        + response.content
+    )
 
 
 def _do_news(channel):
