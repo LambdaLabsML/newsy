@@ -1,9 +1,12 @@
-# Set up
+# Lambda Newsy
 
-1. `pip install -r requirements.txt`
-2. `python3 app.py` will launch the slack bot
+![image](https://github.com/LambdaLabsML/newsy/assets/138706315/614149fd-badd-4008-8b14-542bc20356c7)
 
-# Environment
+## Set up
+
+```pip install -r requirements.txt```
+
+### Required Environment Variables
 
 - `SLACK_APP_TOKEN`
 - `SLACK_BOT_TOKEN`
@@ -12,3 +15,7 @@
 - `REDDIT_PASSWORD`
 - `REDDIT_USERNAME`
 - `OPENAI_API_KEY`
+
+## Launch
+
+```python3 app.py```
