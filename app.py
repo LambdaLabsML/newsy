@@ -340,20 +340,23 @@ def _do_news(channel):
     num = 0
     total = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
+        if "error" in post:
+            news.reply(
+                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+            )
+            continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
-        try:
-            should_show = lm.matches_filter(
-                post["title"] + "\n\n" + post["content"], ARTICLE_FILTER
-            )
+        should_show = lm.matches_filter(
+            post["title"] + "\n\n" + post["content"], ARTICLE_FILTER
+        )
 
-            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
-            print(msg)
-            if should_show:
-                num += 1
-                news.lazy_add_line(msg)
-        except Exception as err:
-            print(err)
+        msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
+        print(msg)
+        if should_show:
+            num += 1
+            news.lazy_add_line(msg)
+
     if num == 0:
         news.add_line("_No more relevant posts from today._")
     news.add_line(f"_Checked {total} posts._")
@@ -361,14 +364,13 @@ def _do_news(channel):
     news.start_new_section()
     news.add_line("*/r/MachineLearning:*")
     news.set_progress_msg("Retrieving posts")
+    num = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
-        try:
-            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
-            print(msg)
-            news.lazy_add_line(msg)
-        except Exception as err:
-            print(err)
+        msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
+        print(msg)
+        num += 1
+        news.lazy_add_line(msg)
 
     news.start_new_section()
     news.add_line(f"*Blogs:*")
@@ -381,14 +383,11 @@ def _do_news(channel):
         ("NVIDIA Blog", "https://feeds.feedburner.com/nvidiablog"),
     ]:
         news.set_progress_msg(f"Retrieving feed items from {name}")
-        try:
-            for item in parse_rss.iter_items_from_today(rss_feed):
-                msg = f"{num + 1}. {name} | <{item['url']}|{item['title']}>"
-                print(msg)
-                num += 1
-                news.lazy_add_line(msg)
-        except Exception as err:
-            print(err)
+        for item in parse_rss.iter_items_from_today(rss_feed):
+            msg = f"{num + 1}. {name} | <{item['url']}|{item['title']}>"
+            print(msg)
+            num += 1
+            news.lazy_add_line(msg)
     if num == 0:
         news.add_line("_No blogs from today._")
 
@@ -400,18 +399,13 @@ def _do_news(channel):
     for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
         news.set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
-        try:
-            should_show = lm.matches_filter(
-                "Abstract:\n" + paper["abstract"], PAPER_FILTER
-            )
+        should_show = lm.matches_filter("Abstract:\n" + paper["abstract"], PAPER_FILTER)
 
-            msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
-            print(msg)
-            if should_show:
-                num += 1
-                news.lazy_add_line(msg)
-        except Exception as err:
-            print(err)
+        msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
+        print(msg)
+        if should_show:
+            num += 1
+            news.lazy_add_line(msg)
     if num == 0:
         news.add_line("_No more relevant papers from today._")
     news.add_line(f"_Checked {total} papers._")
@@ -477,20 +471,22 @@ def _hackernews_search(description, channel):
     num = 0
     total = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
+        if "error" in post:
+            news.reply(
+                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+            )
+            continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
-        try:
-            should_show = lm.matches_filter(
-                post["title"] + "\n\n" + post["content"], description
-            )
+        should_show = lm.matches_filter(
+            post["title"] + "\n\n" + post["content"], description
+        )
 
-            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
-            print(msg)
-            if should_show:
-                num += 1
-                news.lazy_add_line(msg)
-        except Exception as err:
-            print(err)
+        msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
+        print(msg)
+        if should_show:
+            num += 1
+            news.lazy_add_line(msg)
     if num == 0:
         news.add_line("_No more relevant posts from today._")
     news.add_line(f"_Checked {total} posts._")

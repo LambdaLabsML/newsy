@@ -94,7 +94,14 @@ def iter_top_posts(num_posts=25, num_comments=3):
             try:
                 content = get_text_from_url(item["url"])
             except Exception as err:
-                print(err)
+                yield {
+                    "source": "HackerNews",
+                    "error": err,
+                    "title": item["title"],
+                    "score": item["score"],
+                    "content_url": item.get("url", comments_url),
+                    "comments_url": comments_url,
+                }
                 continue
         else:
             content = item["text"]

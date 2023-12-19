@@ -96,3 +96,8 @@ class EditableMessage:
                 return
             except SlackApiError:
                 ...
+
+    def reply(self, msg):
+        self.client.chat_postMessage(
+            text=msg, channel=self.channel, thread_ts=self.thread
+        )
