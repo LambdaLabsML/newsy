@@ -380,6 +380,7 @@ def _do_news(channel):
     for name, rss_feed in [
         ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
         ("StabilityAI Blog", "https://stability.ai/news?format=rss"),
+        ("Microsoft Research", "https://www.microsoft.com/en-us/research/feed/"),
         ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
     ]:
         news.start_new_section()
