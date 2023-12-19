@@ -361,45 +361,36 @@ def _do_news(channel):
     news.start_new_section()
     news.add_line("*/r/MachineLearning:*")
     news.set_progress_msg("Retrieving posts")
-    num = 0
-    total = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
-        total += 1
         try:
             msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
             print(msg)
-            num += 1
             news.lazy_add_line(msg)
         except Exception as err:
             print(err)
-    if num == 0:
-        news.add_line("_No more relevant posts from today._")
-    news.add_line(f"_Checked {total} posts._")
 
+    news.start_new_section()
+    news.add_line(f"*Blogs:*")
+    num = 0
     for name, rss_feed in [
         ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
         ("StabilityAI Blog", "https://stability.ai/news?format=rss"),
         ("Microsoft Research", "https://www.microsoft.com/en-us/research/feed/"),
         ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
+        ("NVIDIA Blog", "https://feeds.feedburner.com/nvidiablog"),
     ]:
-        news.start_new_section()
-        news.add_line(f"*{name}:*")
-        news.set_progress_msg("Retrieving rss feed items")
+        news.set_progress_msg(f"Retrieving feed items from {name}")
         try:
-            num = 0
             for item in parse_rss.iter_items_from_today(rss_feed):
-                try:
-                    msg = f"{num + 1}. <{item['url']}|{item['title']}>"
-                    print(msg)
-                    num += 1
-                    news.lazy_add_line(msg)
-                except Exception as err:
-                    print(err)
-            if num == 0:
-                news.add_line("_No posts from today._")
+                msg = f"{num + 1}. {name} | <{item['url']}|{item['title']}>"
+                print(msg)
+                num += 1
+                news.lazy_add_line(msg)
         except Exception as err:
-            news.add_line(f"_Encountered error pulling from this rss feed: {err}_")
+            print(err)
+    if num == 0:
+        news.add_line("_No blogs from today._")
 
     news.start_new_section()
     news.add_line("*arxiv AI papers:*")
