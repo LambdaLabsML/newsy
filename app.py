@@ -88,6 +88,8 @@ def handle_app_mention(event):
     if event["type"] == "app_mention":
         parts = [p for p in parts if p["type"] != "user"]
 
+    print("Starting", event["text"])
+
     try:
         if parts[0]["type"] == "link":
             _do_summarize(
@@ -100,10 +102,12 @@ def handle_app_mention(event):
                 ),
                 printl,
             )
+            print("Finished", event["text"])
             return
 
         if parts[0]["type"] != "text":
             printl(f"Unrecognized command `{parts[0]}`. " + HELP)
+            print("Finished", event["text"])
             return
 
         command = parts[0]["text"].strip()
@@ -115,6 +119,7 @@ def handle_app_mention(event):
         ) and any(p["type"] == "link" for p in parts):
             if len(parts) != 2 or parts[1]["type"] != "link":
                 printl("Missing a link to summarize. " + HELP)
+                print("Finished", event["text"])
                 return
             _do_summarize(
                 parts[1]["url"],
@@ -131,6 +136,7 @@ def handle_app_mention(event):
             parts = command.split(" ")
             if len(parts) < 4:
                 printl("Must include a arxiv category and description. " + HELP)
+                print("Finished", event["text"])
                 return
             category = parts[1]
             sub_category = parts[2]
@@ -141,6 +147,7 @@ def handle_app_mention(event):
             parts = command.split(" ")
             if len(parts) < 3:
                 printl("Must include a subreddit name and description. " + HELP)
+                print("Finished", event["text"])
                 return
             subreddit_name = parts[1]
             description = " ".join(parts[2:])
@@ -150,6 +157,7 @@ def handle_app_mention(event):
             parts = command.split(" ")
             if len(parts) < 2:
                 printl("Must include a description. " + HELP)
+                print("Finished", event["text"])
                 return
             description = " ".join(parts[1:])
             _hackernews_search(description, channel=event["channel"])
@@ -173,6 +181,8 @@ def handle_app_mention(event):
             )
     except Exception as err:
         printl(f"Sorry I encountered an error: {type(err)} {repr(err)}")
+
+    print("Finished", event["text"])
 
 
 def _do_summarize(
@@ -352,7 +362,6 @@ def _do_news(channel):
         )
 
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
-        print(msg)
         if should_show:
             num += 1
             news.lazy_add_line(msg)
@@ -373,7 +382,6 @@ def _do_news(channel):
             continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
-        print(msg)
         num += 1
         news.lazy_add_line(msg)
 
@@ -390,7 +398,6 @@ def _do_news(channel):
         news.set_progress_msg(f"Retrieving feed items from {name}")
         for item in parse_rss.iter_items_from_today(rss_feed):
             msg = f"{num + 1}. {name} | <{item['url']}|{item['title']}>"
-            print(msg)
             num += 1
             news.lazy_add_line(msg)
     if num == 0:
@@ -407,7 +414,6 @@ def _do_news(channel):
         should_show = lm.matches_filter("Abstract:\n" + paper["abstract"], PAPER_FILTER)
 
         msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
-        print(msg)
         if should_show:
             num += 1
             news.lazy_add_line(msg)
@@ -428,17 +434,11 @@ def _arxiv_search(category, sub_category, description, channel):
     for paper in parse_arxiv.iter_todays_papers(category=f"{category}.{sub_category}"):
         news.set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
-        try:
-            should_show = lm.matches_filter(
-                "Abstract:\n" + paper["abstract"], description
-            )
-            msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
-            print(msg)
-            if should_show:
-                num += 1
-                news.lazy_add_line(msg)
-        except Exception as err:
-            print(err)
+        should_show = lm.matches_filter("Abstract:\n" + paper["abstract"], description)
+        msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
+        if should_show:
+            num += 1
+            news.lazy_add_line(msg)
     if num == 0:
         news.add_line("_No more relevant papers from today._")
     news.add_line(f"_Checked {total} papers._")
@@ -463,7 +463,6 @@ def _reddit_search(subreddit_name, description, channel):
             post["title"] + "\n\n" + post["content"], description
         )
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
-        print(msg)
         if should_show:
             num += 1
             news.lazy_add_line(msg)
@@ -490,7 +489,6 @@ def _hackernews_search(description, channel):
         )
 
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
-        print(msg)
         if should_show:
             num += 1
             news.lazy_add_line(msg)
@@ -571,16 +569,13 @@ Extract information from Section '{section}' that is relevant to the Question. T
 """
                 )
             )
-            try:
-                extraction = chat(messages).content
-                extraction = json.loads(extraction)
-                print(section, "|", extraction)
-                if extraction["relevant"]:
-                    new_content.append(
-                        f"[begin Section '{section}']\n{extraction['summary']}\n[end Section '{section}']"
-                    )
-            except Exception as err:
-                print(err)
+            extraction = chat(messages).content
+            extraction = json.loads(extraction)
+            print(section, "|", extraction)
+            if extraction["relevant"]:
+                new_content.append(
+                    f"[begin Section '{section}']\n{extraction['summary']}\n[end Section '{section}']"
+                )
             messages.pop()
         additional_content[url] = "\n\n".join(new_content)
 
