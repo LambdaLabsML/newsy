@@ -103,7 +103,14 @@ def iter_top_posts(subreddit, num_posts=25, num_comments=3):
             try:
                 content = get_text_from_url(item.url)
             except Exception as err:
-                print(err)
+                yield {
+                    "source": f"/r/{subreddit}",
+                    "title": item.title,
+                    "score": item.score,
+                    "content_url": item.url,
+                    "comments_url": "https://www.reddit.com" + item.permalink,
+                    "error": err,
+                }
                 continue
 
         comments = []

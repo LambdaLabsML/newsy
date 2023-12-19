@@ -366,6 +366,11 @@ def _do_news(channel):
     news.set_progress_msg("Retrieving posts")
     num = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
+        if "error" in post:
+            news.reply(
+                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+            )
+            continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
         print(msg)
@@ -447,19 +452,21 @@ def _reddit_search(subreddit_name, description, channel):
     num = 0
     total = 0
     for post in parse_reddit.iter_top_posts(subreddit_name, num_posts=25):
+        if "error" in post:
+            news.reply(
+                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+            )
+            continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
-        try:
-            should_show = lm.matches_filter(
-                post["title"] + "\n\n" + post["content"], description
-            )
-            msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
-            print(msg)
-            if should_show:
-                num += 1
-                news.lazy_add_line(msg)
-        except Exception as err:
-            print(err)
+        should_show = lm.matches_filter(
+            post["title"] + "\n\n" + post["content"], description
+        )
+        msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
+        print(msg)
+        if should_show:
+            num += 1
+            news.lazy_add_line(msg)
     if num == 0:
         news.add_line("_No more relevant posts from today._")
     news.add_line(f"_Checked {total} posts._")
