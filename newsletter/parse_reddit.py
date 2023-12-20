@@ -18,11 +18,6 @@ def search_for_url(url: str, num_comments=3):
         if item.url != url:
             continue
 
-        content = item.selftext
-        if len(content) == 0:
-            # this was not a selftext
-            content = get_text_from_url(item.url)
-
         comments = []
         for i, comment in enumerate(item.comments):
             if i >= num_comments:
@@ -41,7 +36,6 @@ def search_for_url(url: str, num_comments=3):
             "score": item.score,
             "content_url": item.url,
             "comments_url": "https://www.reddit.com" + item.permalink,
-            "content": content,
             "comments": comments,
         }
 

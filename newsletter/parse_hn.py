@@ -15,10 +15,6 @@ def search_for_url(url: str, num_comments=3):
     item = get_json_from_url(f"{_BASE_URL}/item/{item_id}.json")
 
     comments_url = f"https://news.ycombinator.com/item?id={item_id}"
-    if "url" in item:
-        content = get_text_from_url(item["url"])
-    else:
-        content = item["text"]
 
     comments = []
     if "kids" in item:
@@ -39,7 +35,6 @@ def search_for_url(url: str, num_comments=3):
         "score": item["score"],
         "content_url": item.get("url", comments_url),
         "comments_url": comments_url,
-        "content": content,
         "comments": comments,
     }
 

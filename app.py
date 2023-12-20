@@ -196,6 +196,7 @@ def _do_summarize(
     content = (
         "Unable to access Article - no questions can be answered nor summary provided."
     )
+    summary = None
     try:
         is_twitter_post = "twitter.com" in url
         is_reddit_comments = "reddit.com" in url and "comments" in url
@@ -301,9 +302,12 @@ def _do_summarize(
             lines[0] += " centered around:"
             for i, c in enumerate(discussion["comments"]):
                 slack_msg.edit_line(f"_Summarizing comment {i + 1} on {name}..._")
-                comment_summary = lm.summarize_comment(
-                    discussion["title"], summary, c["content"]
-                )
+                if summary is not None:
+                    comment_summary = lm.summarize_comment(
+                        discussion["title"], summary, c["content"]
+                    )
+                else:
+                    comment_summary = c["content"][:50].replace("\n", "") + "..."
                 if "score" in c:
                     lines.append(
                         f"{i + 1}. (+{c['score']}) <{c['url']}|{comment_summary}>"
@@ -316,8 +320,11 @@ def _do_summarize(
             f"You can search for tweets discussing this url on *<https://twitter.com/search?q=url:{url}&src=typed_query|Twitter>*"
         )
 
-    summary = "\n\n".join(sections)
-    slack_msg.edit_line(summary)
+    msg = "\n\n".join(sections)
+    slack_msg.edit_line(msg)
+
+    if summary is None:
+        return
 
     from langchain.chat_models import ChatOpenAI
     from langchain.schema import HumanMessage, AIMessage, SystemMessage
@@ -352,14 +359,20 @@ def _do_news(channel):
     for post in parse_hn.iter_top_posts(num_posts=25):
         if "error" in post:
             news.reply(
-                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+                f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
-        should_show = lm.matches_filter(
-            post["title"] + "\n\n" + post["content"], ARTICLE_FILTER
-        )
+        try:
+            should_show = lm.matches_filter(
+                post["title"] + "\n\n" + post["content"], ARTICLE_FILTER
+            )
+        except Exception as err:
+            news.reply(
+                f"Error while processing {post['comments_url']}: {type(err)} {repr(err)}"
+            )
+            continue
 
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
         if should_show:
@@ -377,7 +390,7 @@ def _do_news(channel):
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
         if "error" in post:
             news.reply(
-                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+                f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
@@ -411,7 +424,15 @@ def _do_news(channel):
     for paper in parse_arxiv.iter_todays_papers(category="cs.AI"):
         news.set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
-        should_show = lm.matches_filter("Abstract:\n" + paper["abstract"], PAPER_FILTER)
+        try:
+            should_show = lm.matches_filter(
+                "Abstract:\n" + paper["abstract"], PAPER_FILTER
+            )
+        except Exception as err:
+            news.reply(
+                f"Error while processing {paper['url']}: {type(err)} {repr(err)}"
+            )
+            continue
 
         msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
         if should_show:
@@ -434,7 +455,15 @@ def _arxiv_search(category, sub_category, description, channel):
     for paper in parse_arxiv.iter_todays_papers(category=f"{category}.{sub_category}"):
         news.set_progress_msg(f"Processing <{paper['url']}|{paper['title']}>")
         total += 1
-        should_show = lm.matches_filter("Abstract:\n" + paper["abstract"], description)
+        try:
+            should_show = lm.matches_filter(
+                "Abstract:\n" + paper["abstract"], description
+            )
+        except Exception as err:
+            news.reply(
+                f"Error while processing {paper['url']}: {type(err)} {repr(err)}"
+            )
+            continue
         msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
         if should_show:
             num += 1
@@ -454,14 +483,20 @@ def _reddit_search(subreddit_name, description, channel):
     for post in parse_reddit.iter_top_posts(subreddit_name, num_posts=25):
         if "error" in post:
             news.reply(
-                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+                f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
-        should_show = lm.matches_filter(
-            post["title"] + "\n\n" + post["content"], description
-        )
+        try:
+            should_show = lm.matches_filter(
+                post["title"] + "\n\n" + post["content"], description
+            )
+        except Exception as err:
+            news.reply(
+                f"Error while processing {post['comments_url']}: {type(err)} {repr(err)}"
+            )
+            continue
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] (+{post['score']}) <{post['content_url']}|{post['title']}>"
         if should_show:
             num += 1
@@ -479,14 +514,20 @@ def _hackernews_search(description, channel):
     for post in parse_hn.iter_top_posts(num_posts=25):
         if "error" in post:
             news.reply(
-                f"Encountered an error processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
+                f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
         news.set_progress_msg(f"Processing <{post['content_url']}|{post['title']}>")
         total += 1
-        should_show = lm.matches_filter(
-            post["title"] + "\n\n" + post["content"], description
-        )
+        try:
+            should_show = lm.matches_filter(
+                post["title"] + "\n\n" + post["content"], description
+            )
+        except Exception as err:
+            news.reply(
+                f"Error while processing {post['comments_url']}: {type(err)} {repr(err)}"
+            )
+            continue
 
         msg = f"{num + 1}. [<{post['comments_url']}|Comments>] <{post['content_url']}|{post['title']}>"
         if should_show:
