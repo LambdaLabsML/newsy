@@ -358,7 +358,7 @@ def _do_news(channel):
     total = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
         if "error" in post:
-            news.reply(
+            print(
                 f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
@@ -369,7 +369,7 @@ def _do_news(channel):
                 post["title"] + "\n\n" + post["content"], ARTICLE_FILTER
             )
         except Exception as err:
-            news.reply(
+            print(
                 f"Error while processing {post['comments_url']}: {type(err)} {repr(err)}"
             )
             continue
@@ -389,7 +389,7 @@ def _do_news(channel):
     num = 0
     for post in parse_reddit.iter_top_posts("MachineLearning", num_posts=2):
         if "error" in post:
-            news.reply(
+            print(
                 f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
@@ -429,9 +429,7 @@ def _do_news(channel):
                 "Abstract:\n" + paper["abstract"], PAPER_FILTER
             )
         except Exception as err:
-            news.reply(
-                f"Error while processing {paper['url']}: {type(err)} {repr(err)}"
-            )
+            print(f"Error while processing {paper['url']}: {type(err)} {repr(err)}")
             continue
 
         msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
@@ -460,9 +458,7 @@ def _arxiv_search(category, sub_category, description, channel):
                 "Abstract:\n" + paper["abstract"], description
             )
         except Exception as err:
-            news.reply(
-                f"Error while processing {paper['url']}: {type(err)} {repr(err)}"
-            )
+            print(f"Error while processing {paper['url']}: {type(err)} {repr(err)}")
             continue
         msg = f"{num + 1}. <{paper['url']}|{paper['title']}>"
         if should_show:
@@ -482,7 +478,7 @@ def _reddit_search(subreddit_name, description, channel):
     total = 0
     for post in parse_reddit.iter_top_posts(subreddit_name, num_posts=25):
         if "error" in post:
-            news.reply(
+            print(
                 f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
@@ -493,7 +489,7 @@ def _reddit_search(subreddit_name, description, channel):
                 post["title"] + "\n\n" + post["content"], description
             )
         except Exception as err:
-            news.reply(
+            print(
                 f"Error while processing {post['comments_url']}: {type(err)} {repr(err)}"
             )
             continue
@@ -513,7 +509,7 @@ def _hackernews_search(description, channel):
     total = 0
     for post in parse_hn.iter_top_posts(num_posts=25):
         if "error" in post:
-            news.reply(
+            print(
                 f"Error while processing {post['comments_url']}: {type(post['error'])} {repr(post['error'])}"
             )
             continue
@@ -524,7 +520,7 @@ def _hackernews_search(description, channel):
                 post["title"] + "\n\n" + post["content"], description
             )
         except Exception as err:
-            news.reply(
+            print(
                 f"Error while processing {post['comments_url']}: {type(err)} {repr(err)}"
             )
             continue
