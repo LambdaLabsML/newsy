@@ -42,6 +42,9 @@ class ParsedPdf:
                         self._section_start_pages.append(i_page)
         self.num_pages = i_page + 1
 
+        if header_font_size is None:
+            raise SectionParsingError("No Introduction section found.")
+
         self._section_end_pages = []
         for i in range(len(self._section_start_pages) - 1):
             self._section_end_pages.append(self._section_start_pages[i + 1])
