@@ -15,6 +15,10 @@ def _get_font_size(paragraph: LTTextContainer):
     return max(sizes)
 
 
+class SectionParsingError(ValueError):
+    ...
+
+
 class ParsedPdf:
     def __init__(self, path: str) -> None:
         self.path = path
@@ -67,7 +71,8 @@ class ParsedPdf:
             del self._section_start_pages[i_citations:]
             del self._section_end_pages[i_citations:]
 
-        assert len(self._section_start_pages) == len(self._section_end_pages)
+        if len(self._section_start_pages) != len(self._section_end_pages):
+            raise SectionParsingError("Unable to parse sections of the pdf properly.")
 
     def get_section(self, name):
         assert name in self.section_names
