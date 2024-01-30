@@ -1,19 +1,32 @@
+import os
 from langchain.chat_models import ChatOpenAI
 from openai.error import InvalidRequestError
 
-
 def _call_llm(*args, model="gpt-3.5-turbo-16k", **kwargs):
-    try:
-        return ChatOpenAI(model=model, request_timeout=30).invoke(*args, **kwargs)
-    except InvalidRequestError as err:
-        if err.code == "context_length_exceeded" and "32k" not in model:
-            return _call_llm(*args, model="gpt-4-32k", **kwargs)
-        raise
+
+    if model in ("gpt-3.5-turbo-16k", "gpt-4-32k"):
+        try:
+            return ChatOpenAI(model=model, request_timeout=30).invoke(*args, **kwargs)
+        except InvalidRequestError as err:
+            if err.code == "context_length_exceeded" and "32k" not in model:
+                return _call_llm(*args, model="gpt-4-32k", **kwargs)
+            raise
+    elif model in ("openchat_3.5"):
+        openai_api_base = f'{os.environ["OPENCHAT_BASE_URL"]}/v1'
+        model = os.environ["OPENCHAT_MODEL"]
+        llm = ChatOpenAI(
+            temperature=0.0,
+            model_name=model,
+            openai_api_base=openai_api_base,
+            verbose=True,
+        )
+        return llm.invoke(*args, **kwargs)
+    else:
+        raise Exception(f"Invalid model: '{model}'")
 
 
-def summarize_post(title: str, content: str) -> str:
-    result = _call_llm(
-        f"""[begin Article]
+def summarize_post(title: str, content: str, model: str) -> str:
+    prompt = f"""[begin Article]
 {title}
 
 {content}
@@ -25,9 +38,11 @@ Generate a bulleted list that summarizes the main points from the above Article.
 3. Ability for general audience to understand.
 4. Write the summary as if a 5 year old was the reader.
 Generate at most 3 bullet points.
-Here is the bulleted list summary:
-"""
-    )
+Here is the bulleted list summary:"""
+    
+    
+
+    result = _call_llm(prompt, model=model)
     return result.content
 
 

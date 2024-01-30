@@ -628,4 +628,8 @@ Extract information from Section '{section}' that is relevant to the Question. T
 
 
 if __name__ == "__main__":
+
+    os.environ["OPENCHAT_BASE_URL"] = "http://146.235.215.16:18888"
+    os.environ["OPENCHAT_MODEL"] = "openchat_3.5"
+    
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
