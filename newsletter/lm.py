@@ -4,16 +4,9 @@ from openai.error import InvalidRequestError
 
 def _call_llm(*args, model="gpt-3.5-turbo-16k", **kwargs):
 
-    if model in ("gpt-3.5-turbo-16k", "gpt-4-32k"):
-        try:
-            return ChatOpenAI(model=model, request_timeout=30).invoke(*args, **kwargs)
-        except InvalidRequestError as err:
-            if err.code == "context_length_exceeded" and "32k" not in model:
-                return _call_llm(*args, model="gpt-4-32k", **kwargs)
-            raise
-    elif model in ("openchat_3.5"):
+    if os.environ["LLM_BACKEND"] == "openchat":
         openai_api_base = f'{os.environ["OPENCHAT_BASE_URL"]}/v1'
-        model = os.environ["OPENCHAT_MODEL"]
+        model = "openchat_3.5"
         llm = ChatOpenAI(
             temperature=0.0,
             model_name=model,
@@ -21,11 +14,19 @@ def _call_llm(*args, model="gpt-3.5-turbo-16k", **kwargs):
             verbose=True,
         )
         return llm.invoke(*args, **kwargs)
+
+    elif model in ("gpt-3.5-turbo-16k", "gpt-4-32k"):
+        try:
+            return ChatOpenAI(model=model, request_timeout=30).invoke(*args, **kwargs)
+        except InvalidRequestError as err:
+            if err.code == "context_length_exceeded" and "32k" not in model:
+                return _call_llm(*args, model="gpt-4-32k", **kwargs)
+            raise
     else:
         raise Exception(f"Invalid model: '{model}'")
 
 
-def summarize_post(title: str, content: str, model: str) -> str:
+def summarize_post(title: str, content: str) -> str:
     prompt = f"""[begin Article]
 {title}
 
@@ -42,7 +43,7 @@ Here is the bulleted list summary:"""
     
     
 
-    result = _call_llm(prompt, model=model)
+    result = _call_llm(prompt)
     return result.content
 
 
