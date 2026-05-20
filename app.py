@@ -189,7 +189,6 @@ def _do_summarize(
     url,
     slack_msg: EditableMessage,
     printl: Callable[[str], None],
-    model="gpt-3.5-turbo-16k",
 ):
     sections = []
 
@@ -326,23 +325,17 @@ def _do_summarize(
     if summary is None:
         return
 
-    from langchain.chat_models import ChatOpenAI
-    from langchain.schema import HumanMessage, AIMessage, SystemMessage
-
-    chat = ChatOpenAI(model=model, request_timeout=30)
-
-    response = chat(
-        [
-            SystemMessage(content=content),
-            AIMessage(content=summary),
-            HumanMessage(
-                content="Suggest 5 follow up questions to learn more about this post. The questions should be answerable based on the content in the article."
-            ),
+    response = lm._CLIENT.responses.create(
+        **lm._ARGS,
+        input=[
+            {"role": "developer", "content": content},
+            {"role": "assistant", "content": summary},
+            {"role": "user", "content": "Suggest 5 follow up questions to learn more about this post. The questions should be answerable based on the content in the article."},
         ]
     )
     printl(
         "Here are some follow up questions to help you dive deeper into this post (tag me and and I can answer them!):\n"
-        + response.content
+        + response.output_text
     )
 
 
@@ -403,16 +396,18 @@ def _do_news(channel):
     num = 0
     for name, rss_feed in [
         ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
-        ("StabilityAI Blog", "https://stability.ai/news?format=rss"),
         ("Microsoft Research", "https://www.microsoft.com/en-us/research/feed/"),
         ("Deepmind Blog", "https://deepmind.google/blog/rss.xml"),
         ("NVIDIA Blog", "https://feeds.feedburner.com/nvidiablog"),
     ]:
         news.set_progress_msg(f"Retrieving feed items from {name}")
-        for item in parse_rss.iter_items_from_today(rss_feed):
-            msg = f"{num + 1}. {name} | <{item['url']}|{item['title']}>"
-            num += 1
-            news.lazy_add_line(msg)
+        try:
+            for item in parse_rss.iter_items_from_today(rss_feed):
+                msg = f"{num + 1}. {name} | <{item['url']}|{item['title']}>"
+                num += 1
+                news.lazy_add_line(msg)
+        except err:
+            print(f"Error while reading from {name}: {err}")
     if num == 0:
         news.add_line("_No blogs from today._")
 
@@ -535,21 +530,17 @@ def _hackernews_search(description, channel):
 
 
 def _do_interactive(
-    conversation, slack_msg: EditableMessage, model="gpt-3.5-turbo-16k"
+    conversation, slack_msg: EditableMessage
 ):
-    from langchain.chat_models import ChatOpenAI
-    from langchain.schema import HumanMessage, SystemMessage, AIMessage
-
-    chat = ChatOpenAI(model=model, request_timeout=30)
     app_user_id = app.client.auth_test()["user_id"]
 
     arxiv_urls = {}
     messages = []
     for event in conversation:
         if event["user"] == app_user_id:
-            messages.append(AIMessage(content=event["text"]))
+            messages.append({"role": "assistant", "content": event["text"]})
         else:
-            messages.append(HumanMessage(content=event["text"]))
+            messages.append({"role": "user", "content": event["text"]})
 
             # check for any external links present in this message.
             for ele in event["blocks"][0]["elements"][0]["elements"]:
@@ -578,7 +569,7 @@ def _do_interactive(
                 else:
                     item = util.get_details_from_url(url)
                     msg = f"[begin Article]\n{item['title']}\n\n{item['text']}\n[end Article]"
-                messages.append(SystemMessage(content=msg))
+                messages.append({"role": "developer", "content": msg})
 
     additional_content = {}
     for url in arxiv_urls:
@@ -591,9 +582,9 @@ def _do_interactive(
         new_content = []
         for section in pdf.section_names:
             slack_msg.edit_line(f"_Reading section '{section}'..._")
-            messages.append(
-                SystemMessage(
-                    content=f"""[begin Section '{section}']
+            messages.append({
+                "role": "developer",
+                "content": f"""[begin Section '{section}']
 {pdf.get_section(section)}
 [end Section '{section}']
 
@@ -602,11 +593,13 @@ def _do_interactive(
 [end Question]
 
 Extract information from Section '{section}' that is relevant to the Question. The output should be a JSON dictionary with two keys. The first key should be the summary, and the second key should be a boolean value indicating whether there is useful information in the section. Here is an example output:
-{{"summary": "<example summary text...>", "relevant": false}}
-"""
-                )
+{{"summary": "<example summary text...>", "relevant": false}}"""
+            })
+            response = lm._CLIENT.responses.create(
+                **lm._ARGS,
+                input=messages,
             )
-            extraction = chat(messages).content
+            extraction = response.output_text
             extraction = json.loads(extraction)
             print(section, "|", extraction)
             if extraction["relevant"]:
@@ -621,16 +614,14 @@ Extract information from Section '{section}' that is relevant to the Question. T
 
     try:
         slack_msg.edit_line("_Thinking..._")
-        response = chat(messages)
-        slack_msg.edit_line(response.content)
+        response = lm._CLIENT.responses.create(
+            **lm._ARGS,
+            input=messages,
+        )
+        slack_msg.edit_line(response.output_text)
     except Exception as err:
         slack_msg.edit_line(f"Sorry I encountered an error: {type(err)} {repr(err)}")
 
 
 if __name__ == "__main__":
-
-    os.environ["OPENCHAT_BASE_URL"] = "http://146.235.215.16:18888"
-    os.environ["MODEL"] = "openchat_3.5"
-    os.environ["LLM_BACKEND"] = "openchat"
-
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
