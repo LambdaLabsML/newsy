@@ -31,9 +31,13 @@ ARTICLE_FILTER = """Articles related to Artificial intelligence (AI), Machine Le
 """
 
 PAPER_FILTER = """Papers related to:
-1. Prompting techniques for language models
-2. Techniques for increasing sequence length of transformers.
-3. Techniques for optimizing size or efficiency of language models (like quantization or sparsification)
+1. Techniques for increasing sequence length of transformers.
+2. Techniques for optimizing size or efficiency of language models (like quantization or sparsification)
+3. Techniques that change the MLP layers of Transformer networks (like Mixture of Experts (MoE))
+4. Techniques that change the Attention layers of Transformer networks (like flash attention, linear attention, State Space Models (SSM), MAMBA, RWKV, etc)
+5. Techniques related to improving TFLOPS/MFU during model training
+6. Techniques related to improving performance of underlying CUDA/triton kernels
+7. Techniques or datasets for reducing or measuring gender/race bias in LLMs
 """
 
 HELP = """Valid commands are:
@@ -406,7 +410,7 @@ def _do_news(channel):
                 msg = f"{num + 1}. {name} | <{item['url']}|{item['title']}>"
                 num += 1
                 news.lazy_add_line(msg)
-        except err:
+        except Exception as err:
             print(f"Error while reading from {name}: {err}")
     if num == 0:
         news.add_line("_No blogs from today._")
