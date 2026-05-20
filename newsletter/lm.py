@@ -3,7 +3,8 @@ from openai import OpenAI
 _CLIENT = OpenAI()
 _ARGS = dict(
     model="gpt-5-nano-2025-08-07",
-    timeout=30,
+    timeout=120,
+    tools=[{"type": "web_search"}],
 )
 
 def summarize_post(title: str, content: str) -> str:

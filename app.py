@@ -1,3 +1,4 @@
+import random
 import json
 from typing import Callable
 import os
@@ -618,11 +619,39 @@ Extract information from Section '{section}' that is relevant to the Question. T
 
     try:
         slack_msg.edit_line("_Thinking..._")
-        response = lm._CLIENT.responses.create(
+        stream = lm._CLIENT.responses.create(
             **lm._ARGS,
             input=messages,
+            stream=True,
         )
-        slack_msg.edit_line(response.output_text)
+        for event in stream:
+            print(event.type)
+            if event.type in ["error", "response.failed"]:
+                slack_msg.edit_line(f"Woops encountered an error, sry! {event}")
+            elif event.type == "response.queued":
+                slack_msg.edit_line("_Waiting in line..._")
+            elif event.type == "response.in_progress":
+                slack_msg.edit_line("_Thinking..._")
+            elif event.type == "response.output_item.done":
+                slack_msg.edit_line(random.choice([
+                    "_Figured something out_...",
+                    "_Hold on_...",
+                    "_Doodling_...",
+                    "_I'm *definitely* working_...",
+                    "_SQUIRREL!!_",
+                    "_Being extra diligent_...",
+                ]))
+            elif event.type == "response.web_search_call.in_progress":
+                slack_msg.edit_line("_Searching the web..._")
+            elif event.type == "response.output_text.delta":
+                slack_msg.edit_line(f"_Writing_...")
+            elif event.type == "response.completed":
+                messages = [m for m in event.response.output if m.type == "message"]
+                messages = [m.content[0].text for m in messages]
+                slack_msg.edit_line(messages[0])
+                for m in messages[1:]:
+                    slack_msg.add_line(m)
+
     except Exception as err:
         slack_msg.edit_line(f"Sorry I encountered an error: {type(err)} {repr(err)}")
 
